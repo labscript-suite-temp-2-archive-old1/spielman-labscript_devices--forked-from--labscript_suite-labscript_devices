@@ -1,6 +1,6 @@
 #####################################################################
 #                                                                   #
-# /NI_USB_6343.py                                                  #
+# /NI__DAQmx.py                                                  #
 #                                                                   #
 # Copyright 2013, Monash University                                 #
 #                                                                   #
@@ -11,7 +11,7 @@
 #                                                                   #
 #####################################################################
 
-from labscript import LabscriptError
+from labscript import LabscriptError, set_passed_properties
 from labscript_devices import labscript_device, BLACS_tab, BLACS_worker, runviewer_parser
 import labscript_devices.NIBoard as parent
 
@@ -21,18 +21,50 @@ import labscript_utils.properties
 
 
 @labscript_device
-class NI_USB_6343(parent.NIBoard):
-    description = 'NI-USB-6343'
-
-    def __init__(self, name, parent_device, **kwargs):
+class NI_DAQmx(parent.NIBoard):
+            
+    description = 'NI-DAQmx'
+    
+    @set_passed_properties(property_names = {
+        "device_properties":["n_analogs", "n_digitals", "n_analog_ins", "clock_limit"]}
+        )
+    def __init__(self, name, parent_device,
+                 n_analogs=0,
+                 n_digitals=0,
+                 digital_dtype=np.uint32,
+                 n_analog_ins=0,
+                 clock_limit=500e3,
+                 **kwargs):
                      
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
 
-        self.n_analogs = 4
-        self.n_digitals = 32
-        self.digital_dtype = np.uint32
-        self.n_analog_ins = 32
-        self.clock_limit = 700e3
+        # IBS: Now these are just defined at __init__ time
+        # TODO: move all of this information into __init__ for all the children
+        # of parent.NIboard
+        self.n_analogs = n_analogs
+        self.n_digitals = n_digitals
+        self.digital_dtype = digital_dtype
+        self.n_analog_ins = n_analog_ins
+        self.clock_limit = clock_limit
+        
+        # I think a better model is to innumerate all ports that we could have
+        # self.analog_ports = ["ao0", "a01", "ao2", ...]        
+        # self.digital_ports = ["port0/line0:31" ...] # from which you get the digital_dtype for each port
+        # and the number of ports
+        
+        # PFI ports? 
+        
+        # RTSI Port?
+        
+
+
+
+    def generate_code(self, hdf5_file):
+        parent.NIBoard.generate_code(self, hdf5_file)
+        if len(self.child_devices) % 2:
+            raise LabscriptError('%s %s must have an even numer of analog outputs '%(self.description, self.name) +
+                             'in order to guarantee an even total number of samples, which is a limitation of the DAQmx library. ' +
+                             'Please add a dummy output device or remove an output you\'re not using, so that there are an even number of outputs. Sorry, this is annoying I know :).')
 
 
 import time
@@ -42,11 +74,11 @@ from blacs.tab_base_classes import MODE_MANUAL, MODE_TRANSITION_TO_BUFFERED, MOD
 from blacs.device_base_class import DeviceTab
 
 @BLACS_tab
-class NI_USB_6343Tab(DeviceTab):
+class NI__DAQmxTab(DeviceTab):
     def initialise_GUI(self):
-
+        # TODO: pull the following information out of the connection table        
+                
         # Capabilities
-        num_AO = 4
         num = {'AO':4, 'DO':32, 'PFI':16}
         
         base_units = {'AO':'V'}
@@ -103,11 +135,11 @@ class NI_USB_6343Tab(DeviceTab):
         self.MAX_name = str(self.settings['connection_table'].find_by_name(self.device_name).BLACS_connection)
         
         # Create and set the primary worker
-        self.create_worker("main_worker",NI_USB_6343Worker,{'MAX_name':self.MAX_name, 'limits': [base_min['AO'],base_max['AO']], 'num':num})
+        self.create_worker("main_worker",Ni_DAQmxWorker,{'MAX_name':self.MAX_name, 'limits': [base_min['AO'],base_max['AO']], 'num':num})
         self.primary_worker = "main_worker"
-        self.create_worker("wait_monitor_worker",NI_USB_6343WaitMonitorWorker,{'MAX_name':self.MAX_name})
+        self.create_worker("wait_monitor_worker",Ni_DAQmxWaitMonitorWorker,{'MAX_name':self.MAX_name})
         self.add_secondary_worker("wait_monitor_worker")
-        self.create_worker("acquisition_worker",NI_USB_6343AcquisitionWorker,{'MAX_name':self.MAX_name})
+        self.create_worker("acquisition_worker",Ni_DAQmxAcquisitionWorker,{'MAX_name':self.MAX_name})
         self.add_secondary_worker("acquisition_worker")
 
         # Set the capabilities of this device
@@ -115,7 +147,7 @@ class NI_USB_6343Tab(DeviceTab):
         self.supports_smart_programming(False) 
     
 @BLACS_worker
-class NI_USB_6343Worker(Worker):
+class Ni_DAQmxWorker(Worker):
     def init(self):
         exec 'from PyDAQmx import Task' in globals()
         exec 'from PyDAQmx.DAQmxConstants import *' in globals()
@@ -182,7 +214,7 @@ class NI_USB_6343Worker(Worker):
             group = hdf5_file['devices/'][device_name]
             device_properties = labscript_utils.properties.get(hdf5_file, device_name, 'device_properties')
             connection_table_properties = labscript_utils.properties.get(hdf5_file, device_name, 'connection_table_properties')
-            clock_terminal = connection_table_properties['clock_terminal']
+            clock_terminal = connection_table_properties['clock_terminal']            
             h5_data = group.get('ANALOG_OUTS')
             if h5_data:
                 self.buffered_using_analog = True
@@ -221,7 +253,7 @@ class NI_USB_6343Worker(Worker):
             self.do_read = int32()
     
             self.do_task.CreateDOChan(do_channels,"",DAQmx_Val_ChanPerLine)
-            self.do_task.CfgSampClkTiming(clock_terminal,500000,DAQmx_Val_Rising,DAQmx_Val_FiniteSamps,do_bitfield.shape[0])
+            self.do_task.CfgSampClkTiming(clock_terminal,1000000,DAQmx_Val_Rising,DAQmx_Val_FiniteSamps,do_bitfield.shape[0])
             self.do_task.WriteDigitalLines(do_bitfield.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber,do_write_data,self.do_read,None)
             self.do_task.StartTask()
             
@@ -240,7 +272,7 @@ class NI_USB_6343Worker(Worker):
             ao_read = int32()
 
             self.ao_task.CreateAOVoltageChan(ao_channels,"",-10.0,10.0,DAQmx_Val_Volts,None)
-            self.ao_task.CfgSampClkTiming(clock_terminal,500000,DAQmx_Val_Rising,DAQmx_Val_FiniteSamps, ao_data.shape[0])
+            self.ao_task.CfgSampClkTiming(clock_terminal,1000000,DAQmx_Val_Rising,DAQmx_Val_FiniteSamps, ao_data.shape[0])
             
             self.ao_task.WriteAnalogF64(ao_data.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber, ao_data,ao_read,None)
             self.ao_task.StartTask()   
@@ -254,8 +286,6 @@ class NI_USB_6343Worker(Worker):
             self.ao_task.StopTask()
             self.ao_task.ClearTask()
                 
-       
-            
         return final_values
         
     def transition_to_manual(self,abort=False):
@@ -290,7 +320,7 @@ class NI_USB_6343Worker(Worker):
         return self.transition_to_manual(True)    
 
         
-class NI_USB_6343AcquisitionWorker(Worker):
+class Ni_DAQmxAcquisitionWorker(Worker):
     def init(self):
         #exec 'import traceback' in globals()
         exec 'from PyDAQmx import Task' in globals()
@@ -476,7 +506,7 @@ class NI_USB_6343AcquisitionWorker(Worker):
             group =  hdf5_file['/devices/'+device_name]
             device_properties = labscript_utils.properties.get(hdf5_file, device_name, 'device_properties')
             connection_table_properties = labscript_utils.properties.get(hdf5_file, device_name, 'connection_table_properties')
-            self.clock_terminal = connection_table_properties['clock_terminal']
+            self.clock_terminal = connection_table_properties['clock_terminal']            
             if 'analog_in_channels' in device_properties:
                 h5_chnls = device_properties['analog_in_channels'].split(', ')
                 self.buffered_rate = device_properties['acquisition_rate']
@@ -600,7 +630,7 @@ class NI_USB_6343AcquisitionWorker(Worker):
     def program_manual(self,values):
         return {}
     
-class NI_USB_6343WaitMonitorWorker(Worker):
+class Ni_DAQmxWaitMonitorWorker(Worker):
     def init(self):
         exec 'import ctypes' in globals()
         exec 'from PyDAQmx import Task' in globals()
@@ -733,8 +763,9 @@ class NI_USB_6343WaitMonitorWorker(Worker):
         # Only do anything if we are in fact the wait_monitor device:
         if timeout_device == device_name or acquisition_device == device_name:
             if not timeout_device == device_name and acquisition_device == device_name:
-                raise NotImplementedError("NI-USB-6343 worker must be both the wait monitor timeout device and acquisition device." +
+                raise NotImplementedError("ni-PCIe-6363 worker must be both the wait monitor timeout device and acquisition device." +
                                           "Being only one could be implemented if there's a need for it, but it isn't at the moment")
+            
             self.is_wait_monitor_device = True
             # The counter acquisition task:
             self.acquisition_task = Task()

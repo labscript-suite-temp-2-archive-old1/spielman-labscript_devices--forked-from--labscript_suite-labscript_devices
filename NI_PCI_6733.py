@@ -22,11 +22,17 @@ import labscript_utils.properties
 @labscript_device
 class NI_PCI_6733(parent.NIBoard):
     description = 'NI-PCI-6733'
-    n_analogs = 8
-    n_digitals = 8
-    n_analog_ins = 0
-    clock_limit = 700e3
-    digital_dtype = np.uint32
+
+    def __init__(self, name, parent_device, **kwargs):
+                     
+        parent.NIBoard.__init__(self, name, parent_device, **kwargs)
+
+        self.n_analogs = 8
+        self.n_digitals = 8
+        self.digital_dtype = np.uint32
+        self.n_analog_ins = 0
+        self.clock_limit = 700e3
+
     
     def generate_code(self, hdf5_file):
         parent.NIBoard.generate_code(self, hdf5_file)

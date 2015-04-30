@@ -23,11 +23,15 @@ import labscript_utils.properties
 @labscript_device
 class NI_PCIe_6363(parent.NIBoard):
     description = 'NI-PCIe-6363'
-    n_analogs = 4
-    n_digitals = 32
-    n_analog_ins = 32
-    digital_dtype = np.uint32
 
+    def __init__(self, name, parent_device, **kwargs):
+                     
+        parent.NIBoard.__init__(self, name, parent_device, **kwargs)
+
+        self.n_analogs = 4
+        self.n_digitals = 32
+        self.digital_dtype = np.uint32
+        self.n_analog_ins = 32
 
 import time
 

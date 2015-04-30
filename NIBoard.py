@@ -6,10 +6,6 @@ import labscript_utils.properties
 
 class NIBoard(IntermediateDevice):
     allowed_children = [AnalogOut, DigitalOut, AnalogIn]
-    n_analogs = 4
-    n_digitals = 32
-    digital_dtype = np.uint32
-    clock_limit = 500e3 # underestimate I think.
     description = 'generic_NI_Board'
     
     @set_passed_properties(property_names = {
@@ -21,6 +17,13 @@ class NIBoard(IntermediateDevice):
         self.clock_terminal = clock_terminal
         self.MAX_name = name if MAX_name is None else MAX_name
         self.BLACS_connection = self.MAX_name
+
+        # Now these are just defined at __init__ time
+        self.n_analogs = 4
+        self.n_digitals = 32
+        self.digital_dtype = np.uint32
+        self.clock_limit = 500e3 # underestimate I think.
+
         
     def add_device(self,output):
         # TODO: check there are no duplicates, check that connection
