@@ -26,13 +26,14 @@ class NI_DAQmx(parent.NIBoard):
     description = 'NI-DAQmx'
     
     @set_passed_properties(property_names = {
-        "device_properties":["n_analogs", "n_digitals", "n_analog_ins", "clock_limit"]}
+        "connection_table_properties":["n_analogs", "n_digitals", "n_analog_ins", "n_PFIs", "clock_limit"]}
         )
     def __init__(self, name, parent_device,
                  n_analogs=0,
                  n_digitals=0,
                  digital_dtype=np.uint32,
                  n_analog_ins=0,
+                 n_PFIs=0,
                  clock_limit=500e3,
                  **kwargs):
                      
@@ -45,6 +46,7 @@ class NI_DAQmx(parent.NIBoard):
         self.n_digitals = n_digitals
         self.digital_dtype = digital_dtype
         self.n_analog_ins = n_analog_ins
+        self.n_PFIs = n_PFIs
         self.clock_limit = clock_limit
         
         # I think a better model is to innumerate all ports that we could have
@@ -76,10 +78,15 @@ from blacs.device_base_class import DeviceTab
 @BLACS_tab
 class NI__DAQmxTab(DeviceTab):
     def initialise_GUI(self):
-        # TODO: pull the following information out of the connection table        
+        # pull the following information out of the connection table        
+        connection_object = self.settings['connection_table'].find_by_name(self.device_name)
+        connection_table_properties = connection_object.properties
                 
         # Capabilities
-        num = {'AO':4, 'DO':32, 'PFI':16}
+        num = {
+            'AO':connection_table_properties["n_analogs"],
+            'DO':connection_table_properties["n_digitals"],
+            'PFI':connection_table_properties["n_PFIs"]}
         
         base_units = {'AO':'V'}
         base_min = {'AO':-10.0}
@@ -88,6 +95,7 @@ class NI__DAQmxTab(DeviceTab):
         base_decimals = {'AO':3}
         
         # Create the AO output objects
+        # TODO: search through defined limits and fill if provided
         ao_prop = {}
         for i in range(num['AO']):
             ao_prop['ao%d'%i] = {'base_unit':base_units['AO'],
@@ -104,7 +112,6 @@ class NI__DAQmxTab(DeviceTab):
         pfi_prop = {}
         for i in range(num['PFI']):
             pfi_prop['PFI %d'%i] = {}
-        
         
         # Create the output objects    
         self.create_analog_outputs(ao_prop)        
@@ -177,13 +184,16 @@ class Ni_DAQmxWorker(Worker):
         for i in range(self.num['AO']): 
             self.ao_task.CreateAOVoltageChan(self.MAX_name+"/ao%d"%i,"",self.limits[0],self.limits[1],DAQmx_Val_Volts,None)
         
+        # TODO: Currently labscript only supports one DO port, so why we setting more than one port?
+        self.do_task.CreateDOChan(self.MAX_name+"/port0/line0:%d"%self.num["DO"]-1,"",DAQmx_Val_ChanForAllLines)
+        
         #setup DO ports
-        self.do_task.CreateDOChan(self.MAX_name+"/port0/line0:7","",DAQmx_Val_ChanForAllLines)
-        self.do_task.CreateDOChan(self.MAX_name+"/port0/line8:15","",DAQmx_Val_ChanForAllLines)
-        self.do_task.CreateDOChan(self.MAX_name+"/port0/line16:23","",DAQmx_Val_ChanForAllLines)
-        self.do_task.CreateDOChan(self.MAX_name+"/port0/line24:31","",DAQmx_Val_ChanForAllLines)
-        self.do_task.CreateDOChan(self.MAX_name+"/port1/line0:7","",DAQmx_Val_ChanForAllLines)
-        self.do_task.CreateDOChan(self.MAX_name+"/port2/line0:7","",DAQmx_Val_ChanForAllLines)  
+        # self.do_task.CreateDOChan(self.MAX_name+"/port0/line0:7","",DAQmx_Val_ChanForAllLines)
+        # self.do_task.CreateDOChan(self.MAX_name+"/port0/line8:15","",DAQmx_Val_ChanForAllLines)
+        # self.do_task.CreateDOChan(self.MAX_name+"/port0/line16:23","",DAQmx_Val_ChanForAllLines)
+        # self.do_task.CreateDOChan(self.MAX_name+"/port0/line24:31","",DAQmx_Val_ChanForAllLines)
+        # self.do_task.CreateDOChan(self.MAX_name+"/port1/line0:7","",DAQmx_Val_ChanForAllLines)
+        # self.do_task.CreateDOChan(self.MAX_name+"/port2/line0:7","",DAQmx_Val_ChanForAllLines)  
                 
     def shutdown(self):        
         self.ao_task.StopTask()

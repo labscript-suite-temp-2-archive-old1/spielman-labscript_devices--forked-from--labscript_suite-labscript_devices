@@ -29,7 +29,7 @@ class NI_PCI_6733(parent.NIBoard):
 
         self.n_analogs = 8
         self.n_digitals = 8
-        self.digital_dtype = np.uint32
+        self.digital_dtype = np.uint8
         self.n_analog_ins = 0
         self.clock_limit = 700e3
 

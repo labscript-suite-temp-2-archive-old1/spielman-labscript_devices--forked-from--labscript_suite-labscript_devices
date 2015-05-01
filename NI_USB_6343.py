@@ -75,13 +75,15 @@ class NI_USB_6343Tab(DeviceTab):
         
         
         # Create the output objects    
-        self.create_analog_outputs(ao_prop)        
+        self.create_analog_outputs(ao_prop)
+        
         # Create widgets for analog outputs only
         dds_widgets,ao_widgets,do_widgets = self.auto_create_widgets()
         
         # now create the digital output objects
         self.create_digital_outputs(do_prop)
         self.create_digital_outputs(pfi_prop)
+        
         # manually create the digital output widgets so they are grouped separately
         do_widgets = self.create_digital_widgets(do_prop)
         pfi_widgets = self.create_digital_widgets(pfi_prop)
