@@ -114,7 +114,8 @@ class NI__DAQmxTab(DeviceTab):
             pfi_prop['PFI %d'%i] = {}
         
         # Create the output objects    
-        self.create_analog_outputs(ao_prop)        
+        self.create_analog_outputs(ao_prop)
+        
         # Create widgets for analog outputs only
         dds_widgets,ao_widgets,do_widgets = self.auto_create_widgets()
         
