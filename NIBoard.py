@@ -119,13 +119,13 @@ class RunviewerClass(object):
         self.device = device
 
         with h5py.File(self.path, 'r') as hdf5_file:
-            self.device_properties = labscript_utils.properties.get(hdf5_file, self.name, 'device_properties')
-            self.connection_table_properties = labscript_utils.properties.get(hdf5_file, self.name, 'connection_table_properties')
+            device_properties = labscript_utils.properties.get(hdf5_file, self.name, 'device_properties')
+            connection_table_properties = labscript_utils.properties.get(hdf5_file, self.name, 'connection_table_properties')
         
         if num_digitals is not None:
             self.num_digitals = num_digitals
         else:
-            self.num_digitals = self.connection_table_properties["n_digitals"]
+            self.num_digitals = connection_table_properties["num_DO"]
 
         
         # We create a lookup table for strings to be used later as dictionary keys.

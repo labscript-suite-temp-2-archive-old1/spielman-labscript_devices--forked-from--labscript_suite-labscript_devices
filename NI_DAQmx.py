@@ -26,27 +26,27 @@ class NI_DAQmx(parent.NIBoard):
     description = 'NI-DAQmx'
     
     @set_passed_properties(property_names = {
-        "connection_table_properties":["n_analogs", "n_digitals", "n_analog_ins", "n_PFIs", "clock_limit"]}
+        "connection_table_properties":["num_AO", "num_DO", "dtype_DO", "num_AI", "clock_terminal_AI", "mode_AI", "num_PFI", "clock_limit"]}
         )
     def __init__(self, name, parent_device,
-                 n_analogs=0,
-                 n_digitals=0,
-                 digital_dtype=np.uint32,
-                 n_analog_ins=0,
-                 n_PFIs=0,
+                 num_AO=0,
+                 num_DO=0,
+                 dtype_DO=np.uint32,
+                 num_AI=0,
+                 clock_terminal_AI=None,
+                 mode_AI='labscript',
+                 num_PFI=0,
                  clock_limit=500e3,
                  **kwargs):
                      
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
 
         # IBS: Now these are just defined at __init__ time
-        # TODO: move all of this information into __init__ for all the children
-        # of parent.NIboard
-        self.n_analogs = n_analogs
-        self.n_digitals = n_digitals
-        self.digital_dtype = digital_dtype
-        self.n_analog_ins = n_analog_ins
-        self.n_PFIs = n_PFIs
+        self.n_analogs = num_AO
+        self.n_digitals = num_DO
+        self.digital_dtype = dtype_DO
+        self.n_analog_ins = num_AI
+        self.n_PFIs = num_PFI
         self.clock_limit = clock_limit
         
         # I think a better model is to innumerate all ports that we could have
@@ -84,9 +84,9 @@ class NI__DAQmxTab(DeviceTab):
                 
         # Capabilities
         num = {
-            'AO':connection_table_properties["n_analogs"],
-            'DO':connection_table_properties["n_digitals"],
-            'PFI':connection_table_properties["n_PFIs"]}
+            'AO':connection_table_properties["num_AO"],
+            'DO':connection_table_properties["num_DO"],
+            'PFI':connection_table_properties["num_PFI"]}
         
         base_units = {'AO':'V'}
         base_min = {'AO':-10.0}
