@@ -19,19 +19,29 @@ import numpy as np
 import labscript_utils.h5_lock, h5py
 import labscript_utils.properties
 
+uint_map = {0:np.uint0, 8:np.uint8, 16:np.uint16, 32:np.uint32, 64:np.uint64}
 
 @labscript_device
 class NI_DAQmx(parent.NIBoard):
-            
+    """
+    The "num_DO" initilization parameter is also interperted as follows
+    0 -> np.uint0
+    8 -> np.uint8
+    16 -> np.uint16
+    32 -> np.uint32
+    64 -> np.uint64
+    
+    This is because the JSON pasrser that writes this to file was unable
+    to write these types
+    """
     description = 'NI-DAQmx'
     
     @set_passed_properties(property_names = {
-        "connection_table_properties":["num_AO", "num_DO", "dtype_DO", "num_AI", "clock_terminal_AI", "mode_AI", "num_PFI", "clock_limit"]}
+        "connection_table_properties":["num_AO", "num_DO", "num_AI", "clock_terminal_AI", "mode_AI", "num_PFI", "clock_limit"]}
         )
     def __init__(self, name, parent_device,
                  num_AO=0,
                  num_DO=0,
-                 dtype_DO=np.uint32,
                  num_AI=0,
                  clock_terminal_AI=None,
                  mode_AI='labscript',
@@ -44,21 +54,10 @@ class NI_DAQmx(parent.NIBoard):
         # IBS: Now these are just defined at __init__ time
         self.n_analogs = num_AO
         self.n_digitals = num_DO
-        self.digital_dtype = dtype_DO
+        self.digital_dtype = uint_map.get(num_DO, np.uint32)
         self.n_analog_ins = num_AI
         self.n_PFIs = num_PFI
         self.clock_limit = clock_limit
-        
-        # I think a better model is to innumerate all ports that we could have
-        # self.analog_ports = ["ao0", "a01", "ao2", ...]        
-        # self.digital_ports = ["port0/line0:31" ...] # from which you get the digital_dtype for each port
-        # and the number of ports
-        
-        # PFI ports? 
-        
-        # RTSI Port?
-        
-
 
 
     def generate_code(self, hdf5_file):
