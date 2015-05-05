@@ -859,5 +859,6 @@ class Ni_DAQmxWaitMonitorWorker(Worker):
     
 @runviewer_parser
 class RunviewerClass(parent.RunviewerClass):
-    num_digitals = 32
-    
+
+    def __init__(self, *args, **kwargs):
+        parent.RunviewerClass.__init__(self, *args, **kwargs)

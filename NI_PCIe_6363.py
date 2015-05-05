@@ -814,5 +814,7 @@ class NiPCIe6363WaitMonitorWorker(Worker):
     
 @runviewer_parser
 class RunviewerClass(parent.RunviewerClass):
-    num_digitals = 32
+    def __init__(self, *args, **kwargs):
+        kwargs["num_digitals"]=32
+        parent.RunviewerClass.__init__(self, *args, **kwargs)
     

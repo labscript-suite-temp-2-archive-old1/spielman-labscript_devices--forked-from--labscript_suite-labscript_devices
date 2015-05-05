@@ -111,12 +111,22 @@ class NIBoard(IntermediateDevice):
 
 @runviewer_parser
 class RunviewerClass(object):
-    num_digitals = 32
     
-    def __init__(self, path, device):
+    # Todo: make me get passed "Settings" just like in blacs.
+    def __init__(self, path, device, num_digitals=None):
         self.path = path
         self.name = device.name
         self.device = device
+
+        with h5py.File(self.path, 'r') as hdf5_file:
+            self.device_properties = labscript_utils.properties.get(hdf5_file, self.name, 'device_properties')
+            self.connection_table_properties = labscript_utils.properties.get(hdf5_file, self.name, 'connection_table_properties')
+        
+        if num_digitals is not None:
+            self.num_digitals = num_digitals
+        else:
+            self.num_digitals = self.connection_table_properties["n_digitals"]
+
         
         # We create a lookup table for strings to be used later as dictionary keys.
         # This saves having to evaluate '%d'%i many many times, and makes the _add_pulse_program_row_to_traces method

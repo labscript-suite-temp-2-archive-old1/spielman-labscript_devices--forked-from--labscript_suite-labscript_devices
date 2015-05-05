@@ -265,5 +265,7 @@ class NiPCI6733Worker(Worker):
              
 @runviewer_parser
 class RunviewerClass(parent.RunviewerClass):
-    num_digitals = 0
+    def __init__(self, *args, **kwargs):
+        kwargs["num_digitals"]=0
+        parent.RunviewerClass.__init__(self, *args, **kwargs)
     
