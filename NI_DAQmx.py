@@ -52,15 +52,15 @@ class NI_DAQmx(parent.NIBoard):
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
 
         # IBS: Now these are just defined at __init__ time
-        self.n_analogs = num_AO
-        self.n_digitals = num_DO
+        self.num_AO = num_AO
+        self.num_DO = num_DO
         if num_DO in uint_map.keys():
-            self.digital_dtype = uint_map[num_DO]
+            self.dtype_DO = uint_map[num_DO]
         else:
             raise LabscriptError("%s number of DO channels must be one of (0,8,16,32,64)."%num_DO)
             
-        self.n_analog_ins = num_AI
-        self.n_PFIs = num_PFI
+        self.num_AI = num_AI
+        self.num_PFI = num_PFI
         self.clock_limit = clock_limit
 
 

@@ -28,10 +28,10 @@ class NI_PCIe_6363(parent.NIBoard):
                      
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
 
-        self.n_analogs = 4
-        self.n_digitals = 32
-        self.digital_dtype = np.uint32
-        self.n_analog_ins = 32
+        self.num_AO = 4
+        self.num_DO = 32
+        self.dtype_DO = np.uint32
+        self.num_AI = 32
 
 import time
 
@@ -815,6 +815,6 @@ class NiPCIe6363WaitMonitorWorker(Worker):
 @runviewer_parser
 class RunviewerClass(parent.RunviewerClass):
     def __init__(self, *args, **kwargs):
-        kwargs["num_digitals"]=32
+        kwargs["num_DO"]=32
         parent.RunviewerClass.__init__(self, *args, **kwargs)
     

@@ -27,10 +27,10 @@ class NI_PCI_6733(parent.NIBoard):
                      
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
 
-        self.n_analogs = 8
-        self.n_digitals = 8
-        self.digital_dtype = np.uint8
-        self.n_analog_ins = 0
+        self.num_AO = 8
+        self.num_DO = 8
+        self.dtype_DO = np.uint8
+        self.num_AI = 0
         self.clock_limit = 700e3
 
     
@@ -266,6 +266,6 @@ class NiPCI6733Worker(Worker):
 @runviewer_parser
 class RunviewerClass(parent.RunviewerClass):
     def __init__(self, *args, **kwargs):
-        kwargs["num_digitals"]=0
+        kwargs["num_DO"]=0
         parent.RunviewerClass.__init__(self, *args, **kwargs)
     

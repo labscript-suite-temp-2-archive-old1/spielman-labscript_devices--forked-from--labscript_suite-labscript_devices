@@ -28,10 +28,10 @@ class NI_USB_6343(parent.NIBoard):
                      
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
 
-        self.n_analogs = 4
-        self.n_digitals = 32
-        self.digital_dtype = np.uint32
-        self.n_analog_ins = 32
+        self.num_AO = 4
+        self.num_DO = 32
+        self.dtype_DO = np.uint32
+        self.num_AI = 32
         self.clock_limit = 700e3
 
 
@@ -46,7 +46,6 @@ class NI_USB_6343Tab(DeviceTab):
     def initialise_GUI(self):
 
         # Capabilities
-        num_AO = 4
         num = {'AO':4, 'DO':32, 'PFI':16}
         
         base_units = {'AO':'V'}
@@ -820,6 +819,6 @@ class NI_USB_6343WaitMonitorWorker(Worker):
 @runviewer_parser
 class RunviewerClass(parent.RunviewerClass):
     def __init__(self, *args, **kwargs):
-        kwargs["num_digitals"]=32
+        kwargs["num_DO"]=32
         parent.RunviewerClass.__init__(self, *args, **kwargs)
     
