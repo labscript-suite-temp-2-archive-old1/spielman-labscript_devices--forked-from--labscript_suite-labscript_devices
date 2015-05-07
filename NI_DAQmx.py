@@ -181,7 +181,7 @@ class Ni_DAQmxWorker(Worker):
         # TODO: Currently labscript only supports one DO port, so why we setting more than one port?
         # I know that num['num_DO'] is a factor of 8
         for i in range(self.num['num_DO']/8):
-            self.do_task.CreateDOChan(self.MAX_name+"/port0/line%d:%d"%(8*i,i+7),"", DAQmx_Val_ChanForAllLines)
+            self.do_task.CreateDOChan(self.MAX_name+"/port0/line%d:%d"%(8*i,8*i+7),"", DAQmx_Val_ChanForAllLines)
         
         # currently do not allow direct access to PFI ports.  In the future can refer to NU_USB6346 code for an example
 
