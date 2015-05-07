@@ -22,7 +22,7 @@ class NIBoard(IntermediateDevice):
         self.num_AO = 4
         self.num_DO = 32
         self.dtype_DO = np.uint32
-        self.clock_limit = 500e3 # underestimate I think.
+        self.clock_limit = 500e3
 
         
     def add_device(self,output):

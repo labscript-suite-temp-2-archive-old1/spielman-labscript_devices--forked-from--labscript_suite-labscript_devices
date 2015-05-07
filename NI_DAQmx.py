@@ -87,9 +87,9 @@ class NI__DAQmxTab(DeviceTab):
                 
         # Capabilities
         num = {
-            'AO':connection_table_properties["num_AO"],
-            'DO':connection_table_properties["num_DO"],
-            'PFI':connection_table_properties["num_PFI"]}
+            'num_AO':connection_table_properties["num_AO"],
+            'num_DO':connection_table_properties["num_DO"],
+            'num_PFI':connection_table_properties["num_PFI"]}
         
         base_units = {'AO':'V'}
         base_min = {'AO':-10.0}
@@ -100,7 +100,7 @@ class NI__DAQmxTab(DeviceTab):
         # Create the AO output objects
         # TODO: search through defined limits and fill if provided
         ao_prop = {}
-        for i in range(num['AO']):
+        for i in range(num['num_AO']):
             ao_prop['ao%d'%i] = {'base_unit':base_units['AO'],
                                  'min':base_min['AO'],
                                  'max':base_max['AO'],
@@ -109,11 +109,11 @@ class NI__DAQmxTab(DeviceTab):
                                 }
         
         do_prop = {}
-        for i in range(num['DO']):
+        for i in range(num['num_DO']):
             do_prop['port0/line%d'%i] = {}
             
         pfi_prop = {}
-        for i in range(num['PFI']):
+        for i in range(num['num_PFI']):
             pfi_prop['PFI %d'%i] = {}
         
         # Create the output objects    
@@ -170,12 +170,12 @@ class Ni_DAQmxWorker(Worker):
         # Create task
         self.ao_task = Task()
         self.ao_read = int32()
-        self.ao_data = numpy.zeros((self.num['AO'],), dtype=numpy.float64)
+        self.ao_data = numpy.zeros((self.num['num_AO'],), dtype=numpy.float64)
         
         # Create DO task:
         self.do_task = Task()
         self.do_read = int32()
-        self.do_data = numpy.zeros(self.num['DO']+self.num['PFI'],dtype=numpy.uint8)
+        self.do_data = numpy.zeros(self.num['num_DO']+self.num['num_PFI'],dtype=numpy.uint8)
         
         self.setup_static_channels()            
         
@@ -185,13 +185,15 @@ class Ni_DAQmxWorker(Worker):
         
     def setup_static_channels(self):
         #setup AO channels
-        for i in range(self.num['AO']): 
+        for i in range(self.num['num_AO']): 
             self.ao_task.CreateAOVoltageChan(self.MAX_name+"/ao%d"%i,"",self.limits[0],self.limits[1],DAQmx_Val_Volts,None)
         
         # TODO: Currently labscript only supports one DO port, so why we setting more than one port?
-        self.do_task.CreateDOChan(self.MAX_name+"/port0/line0:%d"%self.num["DO"]-1,"",DAQmx_Val_ChanForAllLines)
+        # I know that num['num_DO'] is a factor of 8
+        for i in range(self.num['num_DO']/8):
+            self.do_task.CreateDOChan(self.MAX_name+"/port0/line%d:%d"%(8*i,i+7),"", DAQmx_Val_ChanForAllLines)
         
-        #setup DO ports
+        #setup DO ports [[IBS NOTE: Old code]]
         # self.do_task.CreateDOChan(self.MAX_name+"/port0/line0:7","",DAQmx_Val_ChanForAllLines)
         # self.do_task.CreateDOChan(self.MAX_name+"/port0/line8:15","",DAQmx_Val_ChanForAllLines)
         # self.do_task.CreateDOChan(self.MAX_name+"/port0/line16:23","",DAQmx_Val_ChanForAllLines)
@@ -206,15 +208,15 @@ class Ni_DAQmxWorker(Worker):
         self.do_task.ClearTask()
         
     def program_manual(self,front_panel_values):
-        for i in range(self.num['AO']):
+        for i in range(self.num['num_AO']):
             self.ao_data[i] = front_panel_values['ao%d'%i]
         self.ao_task.WriteAnalogF64(1,True,1,DAQmx_Val_GroupByChannel,self.ao_data,byref(self.ao_read),None)
         
-        for i in range(self.num['DO']):
+        for i in range(self.num['num_DO']):
             self.do_data[i] = front_panel_values['port0/line%d'%i]
             
-        for i in range(self.num['PFI']):
-            self.do_data[i+self.num['DO']] = front_panel_values['PFI %d'%i]
+        for i in range(self.num['num_PFI']):
+            self.do_data[i+self.num['num_DO']] = front_panel_values['PFI %d'%i]
         self.do_task.WriteDigitalLines(1,True,1,DAQmx_Val_GroupByChannel,self.do_data,byref(self.do_read),None)
      
         # TODO: return coerced/quantised values
@@ -255,10 +257,10 @@ class Ni_DAQmxWorker(Worker):
         # We must do digital first, so as to make sure the manual mode task is stopped, or reprogrammed, by the time we setup the AO task
         # this is because the clock_terminal PFI must be freed!
         if self.buffered_using_digital:
-            # Expand each bitfield int into self.num['DO']
+            # Expand each bitfield int into self.num['num_DO']
             # (32) individual ones and zeros:
-            do_write_data = numpy.zeros((do_bitfield.shape[0],self.num['DO']),dtype=numpy.uint8)
-            for i in range(self.num['DO']):
+            do_write_data = numpy.zeros((do_bitfield.shape[0],self.num['num_DO']),dtype=numpy.uint8)
+            for i in range(self.num['num_DO']):
                 do_write_data[:,i] = (do_bitfield & (1 << i)) >> i
                 
             self.do_task.StopTask()
@@ -271,7 +273,7 @@ class Ni_DAQmxWorker(Worker):
             self.do_task.WriteDigitalLines(do_bitfield.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber,do_write_data,self.do_read,None)
             self.do_task.StartTask()
             
-            for i in range(self.num['DO']):
+            for i in range(self.num['num_DO']):
                 final_values['port0/line%d'%i] = do_write_data[-1,i]
         else:
             # We still have to stop the task to make the 
