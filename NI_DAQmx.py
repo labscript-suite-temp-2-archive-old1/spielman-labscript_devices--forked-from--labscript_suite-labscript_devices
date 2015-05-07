@@ -37,16 +37,18 @@ class NI_DAQmx(parent.NIBoard):
     description = 'NI-DAQmx'
     
     @set_passed_properties(property_names = {
-        "connection_table_properties":["num_AO", "num_DO", "num_AI", "clock_terminal_AI", "mode_AI", "num_PFI", "clock_limit"]}
+        "connection_table_properties":["num_AO", "num_DO", "num_AI", "clock_terminal_AI", "mode_AI", "num_PFI"],
+        "device_properties":["sample_rate_AO", "sample_rate_DO"]}
         )
     def __init__(self, name, parent_device,
                  num_AO=0,
+                 sample_rate_AO=1000,
                  num_DO=0,
+                 sample_rate_DO=1000,
                  num_AI=0,
                  clock_terminal_AI=None,
                  mode_AI='labscript',
                  num_PFI=0,
-                 clock_limit=500e3,
                  **kwargs):
                      
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
@@ -62,7 +64,11 @@ class NI_DAQmx(parent.NIBoard):
         self.num_AI = num_AI
         self.clock_terminal_AI = clock_terminal_AI
         self.num_PFI = num_PFI
-        self.clock_limit = clock_limit
+        
+        # Currently these two pieces of information are not independentally
+        # used, but they could be if we wanted to independentaly trigger
+        # the AO and DO ports
+        self.clock_limit = np.minimum(sample_rate_AO, sample_rate_DO)
         
         # Much of this is really redundant code since it should be living in
         # the connection table properties, but to keep compatibility with other
