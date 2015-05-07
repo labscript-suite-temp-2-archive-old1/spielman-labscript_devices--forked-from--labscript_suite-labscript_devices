@@ -475,7 +475,7 @@ class NiPCIe6363AcquisitionWorker(Worker):
             self.clock_terminal = connection_table_properties['clock_terminal']            
             if 'analog_in_channels' in device_properties:
                 h5_chnls = device_properties['analog_in_channels'].split(', ')
-                self.buffered_rate = device_properties['acquisition_rate']
+                self.buffered_rate = device_properties['sample_rate_AI']
             else:
                self.logger.debug("no input channels")
         # combine static channels with h5 channels (using a set to avoid duplicates)

@@ -60,12 +60,18 @@ class NI_DAQmx(parent.NIBoard):
             raise LabscriptError("%s number of DO channels must be one of (0,8,16,32,64)."%num_DO)
             
         self.num_AI = num_AI
+        self.clock_terminal_AI = clock_terminal_AI
         self.num_PFI = num_PFI
         self.clock_limit = clock_limit
-
+        
+        # Much of this is really redundant code since it should be living in
+        # the connection table properties, but to keep compatibility with other
+        # NI drivers we will retain this structure
 
     def generate_code(self, hdf5_file):
         parent.NIBoard.generate_code(self, hdf5_file)
+        # I think this miscounts AO/DO/AI devices allowing me to have an odd 
+        # number of a subset?
         if len(self.child_devices) % 2:
             raise LabscriptError('%s %s must have an even numer of analog outputs '%(self.description, self.name) +
                              'in order to guarantee an even total number of samples, which is a limitation of the DAQmx library. ' +
@@ -178,8 +184,9 @@ class Ni_DAQmxWorker(Worker):
         for i in range(self.num['num_AO']): 
             self.ao_task.CreateAOVoltageChan(self.MAX_name+"/ao%d"%i,"",self.limits[0],self.limits[1],DAQmx_Val_Volts,None)
         
-        # TODO: Currently labscript only supports one DO port, so why we setting more than one port?
-        # I know that num['num_DO'] is a factor of 8
+        # TODO: Currently labscript only supports one DO port, easy to add more
+        # by passing a suitable structure of DO ports
+        # I verified above that num['num_DO'] is a factor of 8
         for i in range(self.num['num_DO']/8):
             self.do_task.CreateDOChan(self.MAX_name+"/port0/line%d:%d"%(8*i,8*i+7),"", DAQmx_Val_ChanForAllLines)
         
@@ -199,7 +206,6 @@ class Ni_DAQmxWorker(Worker):
         
         for i in range(self.num['num_DO']):
             self.do_data[i] = front_panel_values['port0/line%d'%i]
-            
         self.do_task.WriteDigitalLines(1,True,1,DAQmx_Val_GroupByChannel,self.do_data,byref(self.do_read),None)
      
         # TODO: return coerced/quantised values
@@ -241,7 +247,7 @@ class Ni_DAQmxWorker(Worker):
         # this is because the clock_terminal PFI must be freed!
         if self.buffered_using_digital:
             # Expand each bitfield int into self.num['num_DO']
-            # (32) individual ones and zeros:
+            # individual ones and zeros:
             do_write_data = numpy.zeros((do_bitfield.shape[0],self.num['num_DO']),dtype=numpy.uint8)
             for i in range(self.num['num_DO']):
                 do_write_data[:,i] = (do_bitfield & (1 << i)) >> i
@@ -508,7 +514,7 @@ class Ni_DAQmxAcquisitionWorker(Worker):
             self.clock_terminal = connection_table_properties['clock_terminal']            
             if 'analog_in_channels' in device_properties:
                 h5_chnls = device_properties['analog_in_channels'].split(', ')
-                self.buffered_rate = device_properties['acquisition_rate']
+                self.buffered_rate = device_properties['sample_rate_AI']
             else:
                self.logger.debug("no input channels")
         # combine static channels with h5 channels (using a set to avoid duplicates)
