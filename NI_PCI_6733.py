@@ -186,10 +186,10 @@ class NiPCI6733Worker(Worker):
             # We must do digital first, so as to make sure the manual mode task is stopped, or reprogrammed, by the time we setup the AO task
             # this is because the clock_terminal PFI must be freed!
             if self.buffered_using_digital:
-                # Expand each bitfield int into self.num['DO']
+                # Expand each bitfield int into self.num_DO
                 # (32) individual ones and zeros:
-                do_write_data = numpy.zeros((do_bitfield.shape[0],self.num['DO']),dtype=numpy.uint8)
-                for i in range(self.num['DO']):
+                do_write_data = numpy.zeros((do_bitfield.shape[0],self.num_DO),dtype=numpy.uint8)
+                for i in range(self.num_DO):
                     do_write_data[:,i] = (do_bitfield & (1 << i)) >> i
                     
                 self.do_task.StopTask()
@@ -202,7 +202,7 @@ class NiPCI6733Worker(Worker):
                 self.do_task.WriteDigitalLines(do_bitfield.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber,do_write_data,self.do_read,None)
                 self.do_task.StartTask()
                 
-                for i in range(self.num['DO']):
+                for i in range(self.num_DO):
                     final_values['port0/line%d'%i] = do_write_data[-1,i]
             else:
                 # We still have to stop the task to make the 
