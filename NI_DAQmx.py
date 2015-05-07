@@ -111,11 +111,7 @@ class NI__DAQmxTab(DeviceTab):
         do_prop = {}
         for i in range(num['num_DO']):
             do_prop['port0/line%d'%i] = {}
-            
-        pfi_prop = {}
-        for i in range(num['num_PFI']):
-            pfi_prop['PFI %d'%i] = {}
-        
+                    
         # Create the output objects    
         self.create_analog_outputs(ao_prop)
         
@@ -124,23 +120,17 @@ class NI__DAQmxTab(DeviceTab):
         
         # now create the digital output objects
         self.create_digital_outputs(do_prop)
-        self.create_digital_outputs(pfi_prop)
+
         # manually create the digital output widgets so they are grouped separately
         do_widgets = self.create_digital_widgets(do_prop)
-        pfi_widgets = self.create_digital_widgets(pfi_prop)
         
         def do_sort(channel):
             flag = channel.replace('port0/line','')
             flag = int(flag)
             return '%02d'%(flag)
-            
-        def pfi_sort(channel):
-            flag = channel.replace('PFI ','')
-            flag = int(flag)
-            return '%02d'%(flag)
-        
+                    
         # and auto place the widgets in the UI
-        self.auto_place_widgets(("Analog Outputs",ao_widgets),("Digital Outputs",do_widgets,do_sort),("PFI Outputs",pfi_widgets,pfi_sort))
+        self.auto_place_widgets(("Analog Outputs",ao_widgets),("Digital Outputs",do_widgets,do_sort))
         
         # Store the Measurement and Automation Explorer (MAX) name
         self.MAX_name = str(self.settings['connection_table'].find_by_name(self.device_name).BLACS_connection)
@@ -175,7 +165,7 @@ class Ni_DAQmxWorker(Worker):
         # Create DO task:
         self.do_task = Task()
         self.do_read = int32()
-        self.do_data = numpy.zeros(self.num['num_DO']+self.num['num_PFI'],dtype=numpy.uint8)
+        self.do_data = numpy.zeros(self.num['num_DO'],dtype=numpy.uint8)
         
         self.setup_static_channels()            
         
@@ -193,13 +183,8 @@ class Ni_DAQmxWorker(Worker):
         for i in range(self.num['num_DO']/8):
             self.do_task.CreateDOChan(self.MAX_name+"/port0/line%d:%d"%(8*i,i+7),"", DAQmx_Val_ChanForAllLines)
         
-        #setup DO ports [[IBS NOTE: Old code]]
-        # self.do_task.CreateDOChan(self.MAX_name+"/port0/line0:7","",DAQmx_Val_ChanForAllLines)
-        # self.do_task.CreateDOChan(self.MAX_name+"/port0/line8:15","",DAQmx_Val_ChanForAllLines)
-        # self.do_task.CreateDOChan(self.MAX_name+"/port0/line16:23","",DAQmx_Val_ChanForAllLines)
-        # self.do_task.CreateDOChan(self.MAX_name+"/port0/line24:31","",DAQmx_Val_ChanForAllLines)
-        # self.do_task.CreateDOChan(self.MAX_name+"/port1/line0:7","",DAQmx_Val_ChanForAllLines)
-        # self.do_task.CreateDOChan(self.MAX_name+"/port2/line0:7","",DAQmx_Val_ChanForAllLines)  
+        # currently do not allow direct access to PFI ports.  In the future can refer to NU_USB6346 code for an example
+
                 
     def shutdown(self):        
         self.ao_task.StopTask()
@@ -215,8 +200,6 @@ class Ni_DAQmxWorker(Worker):
         for i in range(self.num['num_DO']):
             self.do_data[i] = front_panel_values['port0/line%d'%i]
             
-        for i in range(self.num['num_PFI']):
-            self.do_data[i+self.num['num_DO']] = front_panel_values['PFI %d'%i]
         self.do_task.WriteDigitalLines(1,True,1,DAQmx_Val_GroupByChannel,self.do_data,byref(self.do_read),None)
      
         # TODO: return coerced/quantised values
