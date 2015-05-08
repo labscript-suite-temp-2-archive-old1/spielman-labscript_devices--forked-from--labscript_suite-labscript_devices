@@ -37,8 +37,8 @@ class NI_DAQmx(parent.NIBoard):
     description = 'NI-DAQmx'
     
     @set_passed_properties(property_names = {
-        "connection_table_properties":["num_AO", "num_DO", "num_AI", "clock_terminal_AI", "mode_AI", "num_PFI"],
-        "device_properties":["sample_rate_AO", "sample_rate_DO"]}
+        "connection_table_properties":["num_AO", "num_DO", "num_AI", "clock_terminal_AI", "num_PFI"],
+        "device_properties":["sample_rate_AO", "sample_rate_DO", "mode_AI"]}
         )
     def __init__(self, name, parent_device,
                  num_AO=0,
@@ -474,10 +474,15 @@ class Ni_DAQmxAcquisitionWorker(Worker):
                 self.task.CreateAIVoltageChan(chnl,"",DAQmx_Val_RSE,-10.0,10.0,DAQmx_Val_Volts,None)
                 
             self.task.CfgSampClkTiming("",rate,DAQmx_Val_Rising,DAQmx_Val_ContSamps,1000)
-                    
+            
+            # Currently no difference
             if self.buffered:
-                #set up start on digital trigger
-                self.task.CfgDigEdgeStartTrig(self.clock_terminal,DAQmx_Val_Rising)
+                if self.mode_AI == 'gated':
+                    # setup gated mode
+                    self.task.CfgDigEdgeStartTrig(self.clock_terminal, DAQmx_Val_Rising)
+                else:
+                    #set up start on digital trigger
+                    self.task.CfgDigEdgeStartTrig(self.clock_terminal, DAQmx_Val_Rising)
             
             #DAQmx Start Code
             self.task.StartTask()
@@ -517,7 +522,9 @@ class Ni_DAQmxAcquisitionWorker(Worker):
             group =  hdf5_file['/devices/'+device_name]
             device_properties = labscript_utils.properties.get(hdf5_file, device_name, 'device_properties')
             connection_table_properties = labscript_utils.properties.get(hdf5_file, device_name, 'connection_table_properties')
-            self.clock_terminal = connection_table_properties['clock_terminal']            
+            self.clock_terminal = connection_table_properties['clock_terminal_AI']
+            self.mode_AI = device_properties['mode_AI']
+            
             if 'analog_in_channels' in device_properties:
                 h5_chnls = device_properties['analog_in_channels'].split(', ')
                 self.buffered_rate = device_properties['sample_rate_AI']
