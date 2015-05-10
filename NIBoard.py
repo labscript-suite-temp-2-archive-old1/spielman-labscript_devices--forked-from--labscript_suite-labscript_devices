@@ -49,6 +49,7 @@ class NIBoard(IntermediateDevice):
         digitals = {}
         inputs = {}
         for device in self.child_devices:
+            # TODO loop over allowed children rather than this case-by-case code
             if isinstance(device,AnalogOut):
                 analogs[device.connection] = device
             elif isinstance(device,DigitalOut):

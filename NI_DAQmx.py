@@ -162,12 +162,15 @@ class NI__DAQmxTab(DeviceTab):
 @BLACS_worker
 class Ni_DAQmxWorker(Worker):
     def init(self):
-        exec 'from PyDAQmx import Task' in globals()
+        exec 'from PyDAQmx import Task, DAQmxResetDevice' in globals()
         exec 'from PyDAQmx.DAQmxConstants import *' in globals()
         exec 'from PyDAQmx.DAQmxTypes import *' in globals()
         global pylab; import pylab
         global numpy; import numpy
         global h5py; import labscript_utils.h5_lock, h5py
+        
+        # Reset Device
+        DAQmxResetDevice(self.MAX_name)
         
         # Create task
         self.ao_task = Task()
@@ -182,7 +185,7 @@ class Ni_DAQmxWorker(Worker):
         self.setup_static_channels()            
         
         #DAQmx Start Code        
-        self.ao_task.StartTask() 
+        self.ao_task.StartTask()
         self.do_task.StartTask()  
         
     def setup_static_channels(self):

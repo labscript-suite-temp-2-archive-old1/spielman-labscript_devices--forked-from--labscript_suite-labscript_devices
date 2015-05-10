@@ -118,12 +118,15 @@ class NI_USB_6343Tab(DeviceTab):
 @BLACS_worker
 class NI_USB_6343Worker(Worker):
     def init(self):
-        exec 'from PyDAQmx import Task' in globals()
+        exec 'from PyDAQmx import Task, DAQmxResetDevice' in globals()
         exec 'from PyDAQmx.DAQmxConstants import *' in globals()
         exec 'from PyDAQmx.DAQmxTypes import *' in globals()
         global pylab; import pylab
         global numpy; import numpy
         global h5py; import labscript_utils.h5_lock, h5py
+        
+        # Reset Device
+        DAQmxResetDevice(self.MAX_name)
         
         # Create task
         self.ao_task = Task()
