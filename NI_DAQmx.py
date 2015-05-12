@@ -29,7 +29,6 @@ class NI_DAQmx(parent.NIBoard):
     8 -> np.uint8
     16 -> np.uint16
     32 -> np.uint32
-    64 -> np.uint64
     
     This is because the JSON pasrser that writes this to file was unable
     to write these types
@@ -59,7 +58,7 @@ class NI_DAQmx(parent.NIBoard):
         if num_DO in uint_map.keys():
             self.dtype_DO = uint_map[num_DO]
         else:
-            raise LabscriptError("%s number of DO channels must be one of (0,8,16,32,64)."%num_DO)
+            raise LabscriptError("%s number of DO channels must be one of (0,8,16,32)."%num_DO)
             
         self.num_AI = num_AI
         self.clock_terminal_AI = clock_terminal_AI
@@ -245,6 +244,7 @@ class Ni_DAQmxWorker(Worker):
                 # second last sample) in order to ensure there is one more
                 # clock tick than there are samples. The 6733 requires this
                 # to determine that the task has completed.
+                # TODO: IBS: this statement is false: the last sample is not a duplicate
                 ao_data = pylab.array(h5_data,dtype=float64)[:-1,:]
             else:
                 self.buffered_using_analog = False
