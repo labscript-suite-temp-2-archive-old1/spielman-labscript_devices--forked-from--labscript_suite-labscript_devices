@@ -184,7 +184,7 @@ class NiPCI6733Worker(Worker):
                 # to determine that the task has completed.
                 ao_data = pylab.array(h5_data,dtype=float64)[:-1,:]
             else:
-                self.buffered_using_analog = False   
+                self.buffered_using_analog = False
                 
             h5_data = group.get('DIGITAL_OUTS')
             if h5_data:
