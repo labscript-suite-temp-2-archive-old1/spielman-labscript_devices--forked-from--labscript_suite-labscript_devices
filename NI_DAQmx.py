@@ -244,7 +244,6 @@ class Ni_DAQmxWorker(Worker):
                 # second last sample) in order to ensure there is one more
                 # clock tick than there are samples. The 6733 requires this
                 # to determine that the task has completed.
-                # TODO: IBS: this statement is false: the last sample is not a duplicate
                 ao_data = pylab.array(h5_data,dtype=float64)[:-1,:]
             else:
                 self.buffered_using_analog = False
@@ -253,7 +252,8 @@ class Ni_DAQmxWorker(Worker):
             if h5_data:
                 self.buffered_using_digital = True
                 do_channels = device_properties['digital_lines']
-                do_bitfield = numpy.array(h5_data,dtype=numpy.uint32)
+                # See comment above for ao_channels
+                do_bitfield = numpy.array(h5_data,dtype=numpy.uint32)[:-1,:]
             else:
                 self.buffered_using_digital = False
                 
