@@ -36,12 +36,13 @@ class NI_DAQmx(parent.NIBoard):
     description = 'NI-DAQmx'
     
     @set_passed_properties(property_names = {
-        "connection_table_properties":["num_AO", "num_DO", "num_AI", "clock_terminal_AI", "num_PFI"],
+        "connection_table_properties":["num_AO", "num_DO", "num_AI", "clock_terminal_AI", "num_PFI", "range_AO"],
         "device_properties":["sample_rate_AO", "sample_rate_DO", "mode_AI"]}
         )
     def __init__(self, name, parent_device,
                  num_AO=0,
                  sample_rate_AO=1000,
+                 range_AO=[-10.0,10.0],
                  num_DO=0,
                  sample_rate_DO=1000,
                  num_AI=0,
@@ -49,7 +50,8 @@ class NI_DAQmx(parent.NIBoard):
                  mode_AI='labscript',
                  num_PFI=0,
                  **kwargs):
-                     
+        """
+        """
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
 
         # IBS: Now these are just defined at __init__ time
@@ -98,13 +100,13 @@ class NI__DAQmxTab(DeviceTab):
                 
         # Capabilities
         num = {
-            'num_AO':connection_table_properties["num_AO"],
-            'num_DO':connection_table_properties["num_DO"],
-            'num_PFI':connection_table_properties["num_PFI"]}
+            'num_AO': connection_table_properties["num_AO"],
+            'num_DO': connection_table_properties["num_DO"],
+            'num_PFI': connection_table_properties["num_PFI"]}
         
         base_units = {'AO':'V'}
-        base_min = {'AO':-10.0}
-        base_max = {'AO':10.0}
+        base_min = {'AO':connection_table_properties["range_AO"][0]}
+        base_max = {'AO':connection_table_properties["range_AO"][1]}
         base_step = {'AO':0.1}
         base_decimals = {'AO':3}
         
@@ -149,10 +151,13 @@ class NI__DAQmxTab(DeviceTab):
         # Create and set the primary worker
         self.create_worker("main_worker",Ni_DAQmxWorker,{'MAX_name':self.MAX_name, 'limits': [base_min['AO'],base_max['AO']], 'num':num})
         self.primary_worker = "main_worker"
+        
         self.create_worker("wait_monitor_worker",Ni_DAQmxWaitMonitorWorker,{'MAX_name':self.MAX_name})
         self.add_secondary_worker("wait_monitor_worker")
-        self.create_worker("acquisition_worker",Ni_DAQmxAcquisitionWorker,{'MAX_name':self.MAX_name})
-        self.add_secondary_worker("acquisition_worker")
+        
+        if connection_table_properties["num_AI"] > 0:
+            self.create_worker("acquisition_worker",Ni_DAQmxAcquisitionWorker,{'MAX_name':self.MAX_name})
+            self.add_secondary_worker("acquisition_worker")
 
         # Set the capabilities of this device
         self.supports_remote_value_check(False)
@@ -244,7 +249,6 @@ class Ni_DAQmxWorker(Worker):
                 # second last sample) in order to ensure there is one more
                 # clock tick than there are samples. The 6733 requires this
                 # to determine that the task has completed.
-                # TODO: IBS: this statement is false: the last sample is not a duplicate
                 ao_data = pylab.array(h5_data,dtype=float64)[:-1,:]
             else:
                 self.buffered_using_analog = False
@@ -253,7 +257,7 @@ class Ni_DAQmxWorker(Worker):
             if h5_data:
                 self.buffered_using_digital = True
                 do_channels = device_properties['digital_lines']
-                do_bitfield = numpy.array(h5_data,dtype=numpy.uint32)
+                do_bitfield = numpy.array(h5_data,dtype=numpy.uint32)[:-1,:]
             else:
                 self.buffered_using_digital = False
                 
@@ -802,7 +806,7 @@ class Ni_DAQmxWaitMonitorWorker(Worker):
         # Only do anything if we are in fact the wait_monitor device:
         if timeout_device == device_name or acquisition_device == device_name:
             if not timeout_device == device_name and acquisition_device == device_name:
-                raise NotImplementedError("ni-PCIe-6363 worker must be both the wait monitor timeout device and acquisition device." +
+                raise NotImplementedError("Ni_DAQmx worker must be both the wait monitor timeout device and acquisition device." +
                                           "Being only one could be implemented if there's a need for it, but it isn't at the moment")
             
             self.is_wait_monitor_device = True
