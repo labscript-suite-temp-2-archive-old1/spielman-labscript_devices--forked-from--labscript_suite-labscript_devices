@@ -302,7 +302,7 @@ class Ni_DAQmxWorker(Worker):
                 self.ao_task = Task()
                 ao_read = int32()
     
-                self.ao_task.CreateAOVoltageChan(ao_channels,"",-10.0,10.0,DAQmx_Val_Volts,None)
+                self.ao_task.CreateAOVoltageChan(ao_channels,"",self.limits[0],self.limits[1],DAQmx_Val_Volts,None)
                 self.ao_task.CfgSampClkTiming(
                                 clock_terminal,
                                 device_properties['sample_rate_AO'],
