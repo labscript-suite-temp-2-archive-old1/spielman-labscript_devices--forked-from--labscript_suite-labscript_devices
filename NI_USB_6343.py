@@ -212,7 +212,8 @@ class NI_USB_6343Worker(Worker):
             if h5_data:
                 self.buffered_using_digital = True
                 do_channels = device_properties['digital_lines']
-                do_bitfield = numpy.array(h5_data,dtype=numpy.uint32)
+                # See comment above for ao_channels
+                do_bitfield = numpy.array(h5_data,dtype=numpy.uint32)[:-1,:]
             else:
                 self.buffered_using_digital = False
                 
