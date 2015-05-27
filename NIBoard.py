@@ -10,7 +10,7 @@ class NIBoard(IntermediateDevice):
     @set_passed_properties(property_names = {
         "device_properties":["sample_rate_AI", "MAX_name"]}
         )
-    def __init__(self, name, parent_device, clock_terminal, MAX_name=None, sample_rate_AI=0):
+    def __init__(self, name, parent_device, clock_terminal=None, MAX_name=None, sample_rate_AI=0):
         IntermediateDevice.__init__(self, name, parent_device)
         self.sample_rate_AI = sample_rate_AI
         self.clock_terminal = clock_terminal

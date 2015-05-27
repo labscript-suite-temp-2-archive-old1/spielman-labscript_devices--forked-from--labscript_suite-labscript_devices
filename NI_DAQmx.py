@@ -11,8 +11,8 @@
 #                                                                   #
 #####################################################################
 
-from labscript import LabscriptError, set_passed_properties
-from labscript import AnalogOut, StaticAnalogOut, DigitalOut, StaticDigitalOut, AnalogIn
+from labscript import LabscriptError, set_passed_properties, config
+from labscript import IntermediateDevice, AnalogOut, StaticAnalogOut, DigitalOut, StaticDigitalOut, AnalogIn
 from labscript_devices import labscript_device, BLACS_tab, BLACS_worker, runviewer_parser
 import labscript_devices.NIBoard as parent
 
@@ -37,10 +37,11 @@ class NI_DAQmx(parent.NIBoard):
     description = 'NI-DAQmx'
     
     @set_passed_properties(property_names = {
-        "connection_table_properties":["num_AO", "range_AO", "static_AO", "num_DO", "static_DO", "num_AI", "clock_terminal_AI", "num_PFI"],
+        "connection_table_properties":["clock_terminal", "num_AO", "range_AO", "static_AO", "num_DO", "static_DO", "num_AI", "clock_terminal_AI", "num_PFI"],
         "device_properties":["sample_rate_AO", "sample_rate_DO", "mode_AI"]}
         )
     def __init__(self, name, parent_device,
+                 clock_terminal=None,
                  num_AO=0,
                  sample_rate_AO=1000,
                  range_AO=[-10.0,10.0],
@@ -54,10 +55,12 @@ class NI_DAQmx(parent.NIBoard):
                  num_PFI=0,
                  **kwargs):
         """
+        clock_termanal does not need to be specified for static outout
         """
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
 
-
+        if (clock_terminal is None) and not (static_AO and static_DO):
+            raise LabscriptError("Clock terminal must be specified for dynamic outputs")
 
         # IBS: Now these are just defined at __init__ time
         self.allowed_children = []
@@ -66,9 +69,13 @@ class NI_DAQmx(parent.NIBoard):
         if num_AO > 0 and not static_AO: self.allowed_children += [AnalogOut]
         if num_DO > 0 and static_DO: self.allowed_children += [StaticDigitalOut]
         if num_DO > 0 and not static_DO: self.allowed_children += [DigitalOut]
-            
+                
         self.num_AO = num_AO
         self.num_DO = num_DO
+        self.static_DO = static_DO
+        self.static_AO = static_AO
+        self.clock_terminal = clock_terminal
+        self.range_AO = range_AO
         if num_DO in uint_map.keys():
             self.dtype_DO = uint_map[num_DO]
         else:
@@ -88,7 +95,82 @@ class NI_DAQmx(parent.NIBoard):
         # NI drivers we will retain this structure
 
     def generate_code(self, hdf5_file):
-        parent.NIBoard.generate_code(self, hdf5_file)
+
+        IntermediateDevice.generate_code(self, hdf5_file)
+        analogs = {}
+        digitals = {}
+        inputs = {}
+        for device in self.child_devices:
+            # TODO loop over allowed children rather than this case-by-case code
+            if isinstance(device,AnalogOut) or isinstance(device,StaticAnalogOut):
+                analogs[device.connection] = device
+            elif isinstance(device,DigitalOut) or isinstance(device,StaticDigitalOut):
+                digitals[device.connection] = device
+            elif isinstance(device,AnalogIn):
+                inputs[device.connection] = device
+            else:
+                raise Exception('Got unexpected device.')
+        
+        clockline = self.parent_device
+        pseudoclock = clockline.parent_device
+        times = pseudoclock.times[clockline]
+        
+        if  self.static_AO:
+            analog_out_table = np.empty((1,len(analogs)), dtype=np.float32)
+        else:
+            analog_out_table = np.empty((len(times),len(analogs)), dtype=np.float32)
+        analog_connections = analogs.keys()
+        analog_connections.sort()
+        analog_out_attrs = []
+        for i, connection in enumerate(analog_connections):
+            output = analogs[connection]
+            if any(output.raw_output > self.range_AO[1] )  or any(output.raw_output < self.range_AO[0] ):
+                # Bounds checking:
+                raise LabscriptError('%s %s '%(output.description, output.name) +
+                                  'can only have values between -10 and 10 Volts, ' + 
+                                  'the limit imposed by %s.'%self.name)
+            if self.static_AO:
+                 analog_out_table[0,i] = output.static_value
+            else:
+                analog_out_table[:,i] = output.raw_output
+            analog_out_attrs.append(self.MAX_name +'/'+connection)
+        
+        input_connections = inputs.keys()
+        input_connections.sort()
+        input_attrs = []
+        acquisitions = []
+        for connection in input_connections:
+            input_attrs.append(self.MAX_name+'/'+connection)
+            for acq in inputs[connection].acquisitions:
+                acquisitions.append((connection,acq['label'],acq['start_time'],acq['end_time'],acq['wait_label'],acq['scale_factor'],acq['units']))
+        # The 'a256' dtype below limits the string fields to 256
+        # characters. Can't imagine this would be an issue, but to not
+        # specify the string length (using dtype=str) causes the strings
+        # to all come out empty.
+        acquisitions_table_dtypes = [('connection','a256'), ('label','a256'), ('start',float),
+                                     ('stop',float), ('wait label','a256'),('scale factor',float), ('units','a256')]
+        acquisition_table= np.empty(len(acquisitions), dtype=acquisitions_table_dtypes)
+        for i, acq in enumerate(acquisitions):
+            acquisition_table[i] = acq
+        
+        digital_out_table = []
+        if digitals:
+            if self.static_DO:
+                digital_out_table = self.convert_bools_to_bytes(digitals.static_value)
+            else:
+                digital_out_table = self.convert_bools_to_bytes(digitals.values())
+            
+        grp = self.init_device_group(hdf5_file)
+        if all(analog_out_table.shape): # Both dimensions must be nonzero
+            grp.create_dataset('ANALOG_OUTS',compression=config.compression,data=analog_out_table)
+            self.set_property('analog_out_channels', ', '.join(analog_out_attrs), location='device_properties')
+        if len(digital_out_table): # Table must be non empty
+            grp.create_dataset('DIGITAL_OUTS',compression=config.compression,data=digital_out_table)
+            self.set_property('digital_lines', '/'.join((self.MAX_name,'port0','line0:%d'%(self.num_DO-1))), location='device_properties')
+        if len(acquisition_table): # Table must be non empty
+            grp.create_dataset('ACQUISITIONS',compression=config.compression,data=acquisition_table)
+            self.set_property('analog_in_channels', ', '.join(input_attrs), location='device_properties')
+
         # I think this miscounts AO/DO/AI devices allowing me to have an odd 
         # number of a subset?
         if len(self.child_devices) % 2:
@@ -252,7 +334,9 @@ class Ni_DAQmxWorker(Worker):
             group = hdf5_file['devices/'][device_name]
             device_properties = labscript_utils.properties.get(hdf5_file, device_name, 'device_properties')
             connection_table_properties = labscript_utils.properties.get(hdf5_file, device_name, 'connection_table_properties')
-            clock_terminal = connection_table_properties['clock_terminal']            
+            clock_terminal = connection_table_properties['clock_terminal']
+            static_AO = connection_table_properties['static_AO']
+            static_DO = connection_table_properties['static_DO']
             h5_data = group.get('ANALOG_OUTS')
             if h5_data:
                 self.buffered_using_analog = True
@@ -261,7 +345,7 @@ class Ni_DAQmxWorker(Worker):
                 # second last sample) in order to ensure there is one more
                 # clock tick than there are samples. The 6733 requires this
                 # to determine that the task has completed.
-                ao_data = pylab.array(h5_data,dtype=float64)[:-1,:]
+                ao_data = np.array(h5_data,dtype=float64)
             else:
                 self.buffered_using_analog = False
                 
@@ -270,7 +354,7 @@ class Ni_DAQmxWorker(Worker):
                 self.buffered_using_digital = True
                 do_channels = device_properties['digital_lines']
                 # See comment above for ao_channels
-                do_bitfield = numpy.array(h5_data,dtype=numpy.uint32)[:-1,:]
+                do_bitfield = numpy.array(h5_data,dtype=numpy.uint32)
             else:
                 self.buffered_using_digital = False
                 
@@ -281,7 +365,7 @@ class Ni_DAQmxWorker(Worker):
             if self.buffered_using_digital:
                 # Expand each bitfield int into self.num['num_DO']
                 # individual ones and zeros:
-                do_write_data = numpy.zeros((do_bitfield.shape[0],self.num['num_DO']),dtype=numpy.uint8)
+                do_write_data = numpy.zeros((do_bitfield.shape[0], self.num['num_DO']),dtype=numpy.uint8)
                 for i in range(self.num['num_DO']):
                     do_write_data[:,i] = (do_bitfield & (1 << i)) >> i
                     
@@ -289,17 +373,27 @@ class Ni_DAQmxWorker(Worker):
                 self.do_task.ClearTask()
                 self.do_task = Task()
                 self.do_read = int32()
-        
                 self.do_task.CreateDOChan(do_channels,"",DAQmx_Val_ChanPerLine)
-                self.do_task.CfgSampClkTiming(
-                                clock_terminal,
-                                device_properties['sample_rate_DO'],
-                                DAQmx_Val_Rising,
-                                DAQmx_Val_FiniteSamps,
-                                do_bitfield.shape[0]
-                                )
-                self.do_task.WriteDigitalLines(do_bitfield.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber,do_write_data,self.do_read,None)
-                self.do_task.StartTask()
+                
+                if static_DO:
+                    self.do_task.StartTask()
+                    self.do_task.WriteDigitalLines(1,True,10.0,DAQmx_Val_GroupByChannel,do_write_data,self.do_read,None)
+                else:
+                    # We use all but the last sample (which is identical to the
+                    # second last sample) in order to ensure there is one more
+                    # clock tick than there are samples. The 6733 requires this
+                    # to determine that the task has completed.
+                    do_bitfield = do_bitfield[:-1,:]
+                    do_write_data = do_write_data[:-1,:]
+                    self.do_task.CfgSampClkTiming(
+                                    clock_terminal,
+                                    device_properties['sample_rate_DO'],
+                                    DAQmx_Val_Rising,
+                                    DAQmx_Val_FiniteSamps,
+                                    do_bitfield.shape[0]
+                                    )
+                    self.do_task.WriteDigitalLines(do_bitfield.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber,do_write_data,self.do_read,None)
+                    self.do_task.StartTask()
                 
                 for i in range(self.num['num_DO']):
                     final_values['port0/line%d'%i] = do_write_data[-1,i]
@@ -314,17 +408,27 @@ class Ni_DAQmxWorker(Worker):
                 self.ao_task.ClearTask()
                 self.ao_task = Task()
                 ao_read = int32()
-    
                 self.ao_task.CreateAOVoltageChan(ao_channels,"",self.limits[0],self.limits[1],DAQmx_Val_Volts,None)
-                self.ao_task.CfgSampClkTiming(
-                                clock_terminal,
-                                device_properties['sample_rate_AO'],
-                                DAQmx_Val_Rising,
-                                DAQmx_Val_FiniteSamps, 
-                                ao_data.shape[0]
-                                )   
-                self.ao_task.WriteAnalogF64(ao_data.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber, ao_data,ao_read,None)
-                self.ao_task.StartTask()   
+
+                if static_AO:
+                    self.ao_task.StartTask()
+                    self.ao_task.WriteAnalogF64(1, True, 10.0, DAQmx_Val_GroupByChannel, ao_data, ao_read, None)
+                else:
+                    # We use all but the last sample (which is identical to the
+                    # second last sample) in order to ensure there is one more
+                    # clock tick than there are samples. The 6733 requires this
+                    # to determine that the task has completed.
+                    ao_data = ao_data[:-1,:]
+    
+                    self.ao_task.CfgSampClkTiming(
+                                    clock_terminal,
+                                    device_properties['sample_rate_AO'],
+                                    DAQmx_Val_Rising,
+                                    DAQmx_Val_FiniteSamps, 
+                                    ao_data.shape[0]
+                                    )   
+                    self.ao_task.WriteAnalogF64(ao_data.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber, ao_data,ao_read,None)
+                    self.ao_task.StartTask()   
                 
                 # Final values here are a dictionary of values, keyed by channel:
                 channel_list = [channel.split('/')[1] for channel in ao_channels.split(', ')]
