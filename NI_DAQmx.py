@@ -12,6 +12,7 @@
 #####################################################################
 
 from labscript import LabscriptError, set_passed_properties
+from labscript import AnalogOut, StaticAnalogOut, DigitalOut, StaticDigitalOut, AnalogIn
 from labscript_devices import labscript_device, BLACS_tab, BLACS_worker, runviewer_parser
 import labscript_devices.NIBoard as parent
 
@@ -36,14 +37,16 @@ class NI_DAQmx(parent.NIBoard):
     description = 'NI-DAQmx'
     
     @set_passed_properties(property_names = {
-        "connection_table_properties":["num_AO", "num_DO", "num_AI", "clock_terminal_AI", "num_PFI", "range_AO"],
+        "connection_table_properties":["num_AO", "range_AO", "static_AO", "num_DO", "static_DO", "num_AI", "clock_terminal_AI", "num_PFI"],
         "device_properties":["sample_rate_AO", "sample_rate_DO", "mode_AI"]}
         )
     def __init__(self, name, parent_device,
                  num_AO=0,
                  sample_rate_AO=1000,
                  range_AO=[-10.0,10.0],
+                 static_AO=False,
                  num_DO=0,
+                 static_DO=False,
                  sample_rate_DO=1000,
                  num_AI=0,
                  clock_terminal_AI=None,
@@ -54,7 +57,16 @@ class NI_DAQmx(parent.NIBoard):
         """
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
 
+
+
         # IBS: Now these are just defined at __init__ time
+        self.allowed_children = []
+        if num_AI > 0: self.allowed_children += [AnalogIn]
+        if num_AO > 0 and static_AO: self.allowed_children += [StaticAnalogOut]
+        if num_AO > 0 and not static_AO: self.allowed_children += [AnalogOut]
+        if num_DO > 0 and static_DO: self.allowed_children += [StaticDigitalOut]
+        if num_DO > 0 and not static_DO: self.allowed_children += [DigitalOut]
+            
         self.num_AO = num_AO
         self.num_DO = num_DO
         if num_DO in uint_map.keys():

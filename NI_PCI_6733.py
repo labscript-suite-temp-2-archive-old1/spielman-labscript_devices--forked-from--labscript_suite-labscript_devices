@@ -13,6 +13,7 @@
 
 from labscript import LabscriptError
 from labscript_devices import labscript_device, BLACS_tab, BLACS_worker, runviewer_parser
+from labscript import AnalogOut, StaticAnalogOut, DigitalOut, StaticDigitalOut, AnalogIn
 import labscript_devices.NIBoard as parent
 
 import numpy as np
@@ -27,6 +28,7 @@ class NI_PCI_6733(parent.NIBoard):
                      
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
 
+        self.allowed_children = [AnalogOut, DigitalOut, AnalogIn]
         self.num_AO = 8
         self.num_DO = 8
         self.dtype_DO = np.uint8

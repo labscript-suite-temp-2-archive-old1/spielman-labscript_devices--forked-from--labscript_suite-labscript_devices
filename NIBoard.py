@@ -5,7 +5,6 @@ import labscript_utils.h5_lock, h5py
 import labscript_utils.properties
 
 class NIBoard(IntermediateDevice):
-    allowed_children = [AnalogOut, DigitalOut, AnalogIn]
     description = 'generic_NI_Board'
     
     @set_passed_properties(property_names = {
@@ -23,7 +22,6 @@ class NIBoard(IntermediateDevice):
         self.num_DO = 32
         self.dtype_DO = np.uint32
         self.clock_limit = 500e3
-
         
     def add_device(self,output):
         # TODO: check there are no duplicates, check that connection
