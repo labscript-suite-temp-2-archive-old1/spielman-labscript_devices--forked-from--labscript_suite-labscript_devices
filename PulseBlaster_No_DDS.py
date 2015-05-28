@@ -11,13 +11,11 @@
 #                                                                   #
 #####################################################################
 
-from labscript_devices import labscript_device, BLACS_tab, BLACS_worker, runviewer_parser
+from labscript_devices import labscript_device, BLACS_tab, BLACS_worker
 from labscript_devices.PulseBlaster import PulseBlaster
 from labscript import PseudoclockDevice, config
 
 import numpy as np
-
-import time
 
 def check_version(module_name, at_least, less_than, version=None):
 
@@ -281,10 +279,10 @@ class PulseblasterNoDDSWorker(Worker):
             pb_start()
         elif self.programming_scheme == 'pb_stop_programming/STOP':
             pb_stop_programming()
-            pb_start()
+            pb_start() # Start program
         else:
             raise ValueError('invalid programming_scheme: %s'%str(self.programming_scheme))
-            
+        
     def transition_to_buffered(self,device_name,h5file,initial_values,fresh):
         self.h5file = h5file
         if self.programming_scheme == 'pb_stop_programming/STOP':
@@ -312,8 +310,10 @@ class PulseblasterNoDDSWorker(Worker):
             
                 self.smart_cache['ready_to_go'] = True
                 self.smart_cache['initial_values'] = initial_values
+                
                 # Line zero is a wait on the final state of the program:
-                pb_inst_pbonly(flags,WAIT,0,100)
+                if self.programming_scheme == 'pb_start/BRANCH':
+                    pb_inst_pbonly(flags,WAIT,0,100)
                 
                 # create initial flags string
                 # NOTE: The spinapi can take a string or integer for flags.
@@ -346,6 +346,9 @@ class PulseblasterNoDDSWorker(Worker):
                 # from the master if we are not:
                 pb_stop_programming()
             elif self.programming_scheme == 'pb_stop_programming/STOP':
+                # Make last instruction a STOP
+                pb_inst_pbonly(flags,STOP,0,100)
+
                 # Don't call pb_stop_programming(). We don't want to pulseblaster to respond to hardware
                 # triggers (such as 50/60Hz line triggers) until we are ready to run.
                 # Our start_method will call pb_stop_programming() when we are ready
@@ -373,6 +376,7 @@ class PulseblasterNoDDSWorker(Worker):
                 self.waits_pending = False
             except zprocess.TimeoutError:
                 pass
+            
         return pb_read_status(), self.waits_pending
 
     def transition_to_manual(self):
