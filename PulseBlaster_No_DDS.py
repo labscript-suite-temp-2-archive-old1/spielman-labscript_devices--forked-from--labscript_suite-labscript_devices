@@ -118,7 +118,7 @@ class Pulseblaster_No_DDS_Tab(DeviceTab):
         self.primary_worker = "main_worker"
         
         # Set the capabilities of this device
-        self.supports_smart_programming(True) 
+        self.supports_smart_programming(False) 
         
         ####
         #### TODO: FIX
