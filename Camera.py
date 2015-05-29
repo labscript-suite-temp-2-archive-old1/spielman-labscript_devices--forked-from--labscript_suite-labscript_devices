@@ -25,23 +25,18 @@ import numpy as np
 @labscript_device
 class Camera(TriggerableDevice):
     description = 'Generic Camera'        
-    
-    # To be set as instantiation arguments:
-    trigger_edge_type = None
-    minimum_recovery_time = None
-    
+        
     @set_passed_properties(
         property_names = {
             "connection_table_properties": ["BIAS_port"],
-            "device_properties": ["serial_number", "SDK", "effective_pixel_size", "exposure_time", "orientation", "trigger_edge_type", "minimum_recovery_time"]}
+            "device_properties": ["serial_number", "SDK", "effective_pixel_size", "exposure_time", "orientation", "minimum_recovery_time"]}
         )
     def __init__(self, name, parent_device, connection,
-                 BIAS_port = 1027, serial_number = 0x0, SDK='', effective_pixel_size=0.0,
-                 exposure_time=float('nan'), orientation='side', trigger_edge_type='rising', minimum_recovery_time=0,
+                 BIAS_port=1027, serial_number=0x0, SDK='', effective_pixel_size=0.0,
+                 exposure_time=float('nan'), orientation='side',minimum_recovery_time=0,
                  **kwargs):
                     
         # not a class attribute, so we don't have to have a subclass for each model of camera:
-        self.trigger_edge_type = trigger_edge_type
         self.minimum_recovery_time = minimum_recovery_time
         self.exposure_time = exposure_time
         self.orientation = orientation
