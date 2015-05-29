@@ -33,7 +33,7 @@ class Camera(TriggerableDevice):
         )
     def __init__(self, name, parent_device, connection,
                  BIAS_port=1027, serial_number=0x0, SDK='', effective_pixel_size=0.0,
-                 exposure_time=float('nan'), orientation='side',minimum_recovery_time=0,
+                 exposure_time=float('nan'), orientation='side', minimum_recovery_time=0,
                  **kwargs):
                     
         # not a class attribute, so we don't have to have a subclass for each model of camera:
