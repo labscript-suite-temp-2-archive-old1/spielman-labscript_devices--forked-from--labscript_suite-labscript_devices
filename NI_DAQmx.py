@@ -383,7 +383,7 @@ class Ni_DAQmxWorker(Worker):
                     # second last sample) in order to ensure there is one more
                     # clock tick than there are samples. The 6733 requires this
                     # to determine that the task has completed.
-                    do_bitfield = do_bitfield[:-1,:]
+
                     do_write_data = do_write_data[:-1,:]
                     self.do_task.CfgSampClkTiming(
                                     clock_terminal,
@@ -392,7 +392,7 @@ class Ni_DAQmxWorker(Worker):
                                     DAQmx_Val_FiniteSamps,
                                     do_bitfield.shape[0]
                                     )
-                    self.do_task.WriteDigitalLines(do_bitfield.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber,do_write_data,self.do_read,None)
+                    self.do_task.WriteDigitalLines(do_write_data.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber,do_write_data,self.do_read,None)
                     self.do_task.StartTask()
                 
                 for i in range(self.num['num_DO']):
