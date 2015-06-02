@@ -127,8 +127,8 @@ class NI_DAQmx(parent.NIBoard):
             if any(output.raw_output > self.range_AO[1] )  or any(output.raw_output < self.range_AO[0] ):
                 # Bounds checking:
                 raise LabscriptError('%s %s '%(output.description, output.name) +
-                                  'can only have values between -10 and 10 Volts, ' + 
-                                  'the limit imposed by %s.'%self.name)
+                                  'can only have values between %e and %e Volts, ' + 
+                                  'the limit imposed by %s.'%(self.range_AO[0], self.range_AO[1], self.name))
             if self.static_AO:
                  analog_out_table[0,i] = output.static_value
             else:
@@ -444,6 +444,21 @@ class Ni_DAQmxWorker(Worker):
     def transition_to_manual(self,abort=False):
         # if aborting, don't call StopTask since this throws an
         # error if the task hasn't actually finished!
+
+        # We are throwing an error here involving not enough triggers (buffer non-empty).  Maybe
+        # use the functions
+        # int32 __CFUNC DAQmxGetWriteCurrWritePos(TaskHandle taskHandle, uInt64 *data);
+        # int32 __CFUNC DAQmxGetWriteTotalSampPerChanGenerated(TaskHandle taskHandle, uInt64 *data);
+        # 
+        # to establish the size of the buffer
+        #
+        CurrentPos = uInt64()
+        TotalSamples = uInt64()
+        # self.ao_task.GetWriteCurrWritePos(CurrentPos)
+        # self.ao_task.DAQmxGetWriteTotalSampPerChanGenerated(TotalSamples)
+
+        print "***** DEBUG *****: CurrentPosition: ", CurrentPos, "; total samples:", TotalSamples
+
         if self.buffered_using_analog:
             if not abort:
                 self.ao_task.StopTask()
@@ -452,7 +467,8 @@ class Ni_DAQmxWorker(Worker):
             if not abort:
                 self.do_task.StopTask()
             self.do_task.ClearTask()
-                
+        
+        
         self.ao_task = Task()
         self.do_task = Task()
         self.setup_static_channels()
