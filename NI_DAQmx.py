@@ -460,10 +460,7 @@ class Ni_DAQmxWorker(Worker):
                 # self.ao_task.GetWriteCurrWritePos(CurrentPos)
                 # self.ao_task.DAQmxGetWriteTotalSampPerChanGenerated(TotalSamples)
                 
-                # I don't know if alogger is declared here
-                # self.logger.debug('Closing AO: at Sample (%d) of (%d)'%(CurrentPos,TotalSamples))
-
-                print "***** DEBUG AO *****: CurrentPosition: ", CurrentPos, "; total samples:", TotalSamples
+                self.logger.debug('Closing AO: at Sample %d of %d'%(CurrentPos,TotalSamples))
 
                 self.ao_task.StopTask()
             self.ao_task.ClearTask()
@@ -474,10 +471,8 @@ class Ni_DAQmxWorker(Worker):
                 # self.do_task.GetWriteCurrWritePos(CurrentPos)
                 # self.do_task.DAQmxGetWriteTotalSampPerChanGenerated(TotalSamples)
 
-                # I don't know if alogger is declared here
-                # self.logger.debug('Closing DO: at Sample (%d) of (%d)'%(CurrentPos,TotalSamples))
+                self.logger.debug('Closing DO: at Sample %d of %d'%(CurrentPos,TotalSamples))
         
-                print "***** DEBUG DO *****: CurrentPosition: ", CurrentPos, "; total samples:", TotalSamples
                 self.do_task.StopTask()
             self.do_task.ClearTask()
         
