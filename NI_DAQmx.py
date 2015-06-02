@@ -460,7 +460,7 @@ class Ni_DAQmxWorker(Worker):
                 self.ao_task.GetWriteCurrWritePos(CurrentPos)
                 self.ao_task.GetWriteTotalSampPerChanGenerated(TotalSamples)
                 
-                self.logger.debug('Closing AO: at Sample %d of %d'%(CurrentPos.value,TotalSamples.value))
+                self.logger.debug('Closing AO: at Sample %d of %d'%(CurrentPos.value, TotalSamples.value))
 
                 self.ao_task.StopTask()
             self.ao_task.ClearTask()
