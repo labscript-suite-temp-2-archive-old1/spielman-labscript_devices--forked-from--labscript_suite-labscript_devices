@@ -193,7 +193,7 @@ class NiPCI6733Worker(Worker):
                 self.buffered_using_digital = True
                 do_channels = device_properties['digital_lines']
                 # See comment above for ao_channels
-                do_bitfield = numpy.array(h5_data,dtype=numpy.uint32)[:-1,:]
+                do_bitfield = numpy.array(h5_data,dtype=numpy.uint32)[:-1]
             else:
                 self.buffered_using_digital = False
                         
