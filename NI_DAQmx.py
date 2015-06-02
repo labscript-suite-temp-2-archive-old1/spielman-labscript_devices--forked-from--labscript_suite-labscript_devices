@@ -452,19 +452,32 @@ class Ni_DAQmxWorker(Worker):
         # 
         # to establish the size of the buffer
         #
-        CurrentPos = uInt64()
-        TotalSamples = uInt64()
-        # self.ao_task.GetWriteCurrWritePos(CurrentPos)
-        # self.ao_task.DAQmxGetWriteTotalSampPerChanGenerated(TotalSamples)
-
-        print "***** DEBUG *****: CurrentPosition: ", CurrentPos, "; total samples:", TotalSamples
 
         if self.buffered_using_analog:
             if not abort:
+                CurrentPos = uInt64()
+                TotalSamples = uInt64()
+                # self.ao_task.GetWriteCurrWritePos(CurrentPos)
+                # self.ao_task.DAQmxGetWriteTotalSampPerChanGenerated(TotalSamples)
+                
+                # I don't know if alogger is declared here
+                # self.logger.debug('Closing AO: at Sample (%d) of (%d)'%(CurrentPos,TotalSamples))
+
+                print "***** DEBUG AO *****: CurrentPosition: ", CurrentPos, "; total samples:", TotalSamples
+
                 self.ao_task.StopTask()
             self.ao_task.ClearTask()
         if self.buffered_using_digital:
             if not abort:
+                CurrentPos = uInt64()
+                TotalSamples = uInt64()
+                # self.do_task.GetWriteCurrWritePos(CurrentPos)
+                # self.do_task.DAQmxGetWriteTotalSampPerChanGenerated(TotalSamples)
+
+                # I don't know if alogger is declared here
+                # self.logger.debug('Closing DO: at Sample (%d) of (%d)'%(CurrentPos,TotalSamples))
+        
+                print "***** DEBUG DO *****: CurrentPosition: ", CurrentPos, "; total samples:", TotalSamples
                 self.do_task.StopTask()
             self.do_task.ClearTask()
         
