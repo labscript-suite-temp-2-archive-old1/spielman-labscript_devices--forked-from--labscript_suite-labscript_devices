@@ -457,10 +457,10 @@ class Ni_DAQmxWorker(Worker):
             if not abort:
                 CurrentPos = uInt64()
                 TotalSamples = uInt64()
-                # self.ao_task.GetWriteCurrWritePos(CurrentPos)
-                # self.ao_task.DAQmxGetWriteTotalSampPerChanGenerated(TotalSamples)
+                self.ao_task.GetWriteCurrWritePos(CurrentPos)
+                self.ao_task.GetWriteTotalSampPerChanGenerated(TotalSamples)
                 
-                self.logger.debug('Closing AO: at Sample %d of %d'%(CurrentPos,TotalSamples))
+                self.logger.debug('Closing AO: at Sample %d of %d'%(CurrentPos.value,TotalSamples.value))
 
                 self.ao_task.StopTask()
             self.ao_task.ClearTask()
@@ -468,10 +468,10 @@ class Ni_DAQmxWorker(Worker):
             if not abort:
                 CurrentPos = uInt64()
                 TotalSamples = uInt64()
-                # self.do_task.GetWriteCurrWritePos(CurrentPos)
-                # self.do_task.DAQmxGetWriteTotalSampPerChanGenerated(TotalSamples)
+                self.do_task.GetWriteCurrWritePos(CurrentPos)
+                self.do_task.GetWriteTotalSampPerChanGenerated(TotalSamples)
 
-                self.logger.debug('Closing DO: at Sample %d of %d'%(CurrentPos,TotalSamples))
+                self.logger.debug('Closing DO: at Sample %d of %d'%(CurrentPos.value,TotalSamples.value))
         
                 self.do_task.StopTask()
             self.do_task.ClearTask()
