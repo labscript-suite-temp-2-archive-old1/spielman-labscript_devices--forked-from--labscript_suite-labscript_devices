@@ -311,9 +311,11 @@ class PulseblasterNoDDSWorker(Worker):
                 self.smart_cache['ready_to_go'] = True
                 self.smart_cache['initial_values'] = initial_values
                 
-                # Line zero is a wait on the final state of the program:
+                # Line zero is a wait on the final state of the program in 'pb_start/BRANCH' mode 
                 if self.programming_scheme == 'pb_start/BRANCH':
                     pb_inst_pbonly(flags,WAIT,0,100)
+                else:
+                    pb_inst_pbonly(flags,CONTINUE,0,100)
                 
                 # create initial flags string
                 # NOTE: The spinapi can take a string or integer for flags.
