@@ -372,12 +372,12 @@ class Ni_DAQmxWorker(Worker):
                 self.do_task.StopTask()
                 self.do_task.ClearTask()
                 self.do_task = Task()
-                self.do_read = int32()
+                do_read = int32()
                 self.do_task.CreateDOChan(do_channels,"",DAQmx_Val_ChanPerLine)
                 
                 if static_DO:
                     self.do_task.StartTask()
-                    self.do_task.WriteDigitalLines(1,True,10.0,DAQmx_Val_GroupByChannel,do_write_data,self.do_read,None)
+                    self.do_task.WriteDigitalLines(1,True,10.0,DAQmx_Val_GroupByChannel,do_write_data,do_read,None)
                 else:
                     # We use all but the last sample (which is identical to the
                     # second last sample) in order to ensure there is one more
@@ -390,9 +390,16 @@ class Ni_DAQmxWorker(Worker):
                                     device_properties['sample_rate_DO'],
                                     DAQmx_Val_Rising,
                                     DAQmx_Val_FiniteSamps,
-                                    do_bitfield.shape[0]
+                                    do_write_data.shape[0]
                                     )
-                    self.do_task.WriteDigitalLines(do_write_data.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber,do_write_data,self.do_read,None)
+                    self.do_task.WriteDigitalLines(
+                                    do_write_data.shape[0],
+                                    False,
+                                    10.0,
+                                    DAQmx_Val_GroupByScanNumber,
+                                    do_write_data,
+                                    do_read,
+                                    None)
                     self.do_task.StartTask()
                 
                 for i in range(self.num['num_DO']):
@@ -427,7 +434,14 @@ class Ni_DAQmxWorker(Worker):
                                     DAQmx_Val_FiniteSamps, 
                                     ao_data.shape[0]
                                     )   
-                    self.ao_task.WriteAnalogF64(ao_data.shape[0],False,10.0,DAQmx_Val_GroupByScanNumber, ao_data,ao_read,None)
+                    self.ao_task.WriteAnalogF64(
+                                    ao_data.shape[0],
+                                    False,
+                                    10.0,
+                                    DAQmx_Val_GroupByScanNumber,
+                                    ao_data,
+                                    ao_read,
+                                    None)
                     self.ao_task.StartTask()   
                 
                 # Final values here are a dictionary of values, keyed by channel:
@@ -460,7 +474,7 @@ class Ni_DAQmxWorker(Worker):
                 self.ao_task.GetWriteCurrWritePos(CurrentPos)
                 self.ao_task.GetWriteTotalSampPerChanGenerated(TotalSamples)
                 
-                self.logger.debug('Closing AO: at Sample %d of %d'%(CurrentPos.value, TotalSamples.value))
+                self.logger.debug('NI_DAQmx Closing AO: at Sample %d of %d'%(CurrentPos.value, TotalSamples.value))
 
                 self.ao_task.StopTask()
             self.ao_task.ClearTask()
@@ -471,7 +485,7 @@ class Ni_DAQmxWorker(Worker):
                 self.do_task.GetWriteCurrWritePos(CurrentPos)
                 self.do_task.GetWriteTotalSampPerChanGenerated(TotalSamples)
 
-                self.logger.debug('Closing DO: at Sample %d of %d'%(CurrentPos.value,TotalSamples.value))
+                self.logger.debug('NI_DAQmx Closing DO: at Sample %d of %d'%(CurrentPos.value, TotalSamples.value))
         
                 self.do_task.StopTask()
             self.do_task.ClearTask()
