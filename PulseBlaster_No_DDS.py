@@ -334,6 +334,7 @@ class PulseblasterNoDDSWorker(Worker):
                         initial_flags += '1'
                     else:
                         initial_flags += '0'
+                        
                 # Line one is a continue with the current front panel values:
                 pb_inst_pbonly(initial_flags, CONTINUE, 0, 100)
                 # Now the rest of the program:
@@ -348,9 +349,6 @@ class PulseblasterNoDDSWorker(Worker):
                 # from the master if we are not:
                 pb_stop_programming()
             elif self.programming_scheme == 'pb_stop_programming/STOP':
-                # Make last instruction a STOP
-                pb_inst_pbonly(flags,STOP,0,100)
-
                 # Don't call pb_stop_programming(). We don't want to pulseblaster to respond to hardware
                 # triggers (such as 50/60Hz line triggers) until we are ready to run.
                 # Our start_method will call pb_stop_programming() when we are ready
