@@ -310,7 +310,7 @@ class PulseblasterNoDDSWorker(Worker):
             
                 self.smart_cache['ready_to_go'] = True
                 self.smart_cache['initial_values'] = initial_values
-                               
+
                 # create initial flags string
                 # NOTE: The spinapi can take a string or integer for flags.
                 # If it is a string: 
