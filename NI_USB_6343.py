@@ -27,7 +27,7 @@ class NI_USB_6343(parent.NIBoard):
 
     def __init__(self, name, parent_device, **kwargs):
                      
-        parent.NIBoard.__init__(self, name, parent_device, **kwargs)
+        parent.NIBoard.__init__(self, name, parent_device, call_parents_add_device=False, **kwargs)
 
         self.allowed_children = [AnalogOut, DigitalOut, AnalogIn]
         self.num_AO = 4
@@ -35,6 +35,9 @@ class NI_USB_6343(parent.NIBoard):
         self.dtype_DO = np.uint32
         self.num_AI = 32
         self.clock_limit = 700e3
+
+        # Now call this to get the clock right
+        self.parent_device.add_device(self)
 
 
 import time

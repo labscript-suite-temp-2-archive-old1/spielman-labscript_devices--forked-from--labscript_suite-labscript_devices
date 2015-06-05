@@ -57,7 +57,7 @@ class NI_DAQmx(parent.NIBoard):
         """
         clock_termanal does not need to be specified for static outout
         """
-        parent.NIBoard.__init__(self, name, parent_device, **kwargs)
+        parent.NIBoard.__init__(self, name, parent_device, call_parents_add_device=False, **kwargs)
 
         if (clock_terminal is None) and not (static_AO and static_DO):
             raise LabscriptError("Clock terminal must be specified for dynamic outputs")
@@ -90,9 +90,8 @@ class NI_DAQmx(parent.NIBoard):
         # the AO and DO ports
         self.clock_limit = np.minimum(sample_rate_AO, sample_rate_DO)
         
-        # Much of this is really redundant code since it should be living in
-        # the connection table properties, but to keep compatibility with other
-        # NI drivers we will retain this structure
+        # Now call this to get the clock right
+        self.parent_device.add_device(self)
 
     def generate_code(self, hdf5_file):
 

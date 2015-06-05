@@ -25,7 +25,7 @@ import labscript_utils.properties
 class NI_PCIe_6363(parent.NIBoard):
     description = 'NI-PCIe-6363'
 
-    def __init__(self, name, parent_device, **kwargs):
+    def __init__(self, name, parent_device, call_parents_add_device=False, **kwargs):
                      
         parent.NIBoard.__init__(self, name, parent_device, **kwargs)
 
@@ -34,6 +34,10 @@ class NI_PCIe_6363(parent.NIBoard):
         self.num_DO = 32
         self.dtype_DO = np.uint32
         self.num_AI = 32
+
+        # Now call this to get the clock right
+        self.parent_device.add_device(self)
+
 
 import time
 

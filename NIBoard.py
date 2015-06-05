@@ -10,8 +10,8 @@ class NIBoard(IntermediateDevice):
     @set_passed_properties(property_names = {
         "device_properties":["sample_rate_AI", "MAX_name"]}
         )
-    def __init__(self, name, parent_device, clock_terminal=None, MAX_name=None, sample_rate_AI=0):
-        IntermediateDevice.__init__(self, name, parent_device)
+    def __init__(self, name, parent_device, clock_terminal=None, MAX_name=None, sample_rate_AI=0, **kwargs):
+        IntermediateDevice.__init__(self, name, parent_device, **kwargs)
         self.sample_rate_AI = sample_rate_AI
         self.clock_terminal = clock_terminal
         self.MAX_name = name if MAX_name is None else MAX_name
@@ -23,10 +23,10 @@ class NIBoard(IntermediateDevice):
         self.dtype_DO = np.uint32
         self.clock_limit = 500e3
         
-    def add_device(self,output):
+    def add_device(self, output):
         # TODO: check there are no duplicates, check that connection
         # string is formatted correctly.
-        IntermediateDevice.add_device(self,output)
+        IntermediateDevice.add_device(self, output)
         
     def convert_bools_to_bytes(self,digitals):
         """converts digital outputs to an array of bitfields stored
