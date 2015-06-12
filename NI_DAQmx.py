@@ -334,8 +334,8 @@ class Ni_DAQmxWorker(Worker):
             device_properties = labscript_utils.properties.get(hdf5_file, device_name, 'device_properties')
             connection_table_properties = labscript_utils.properties.get(hdf5_file, device_name, 'connection_table_properties')
             clock_terminal = connection_table_properties['clock_terminal']
-            static_AO = connection_table_properties['static_AO']
-            static_DO = connection_table_properties['static_DO']
+            self.static_AO = connection_table_properties['static_AO']
+            self.static_DO = connection_table_properties['static_DO']
             h5_data = group.get('ANALOG_OUTS')
             if h5_data:
                 self.buffered_using_analog = True
@@ -374,7 +374,7 @@ class Ni_DAQmxWorker(Worker):
                 do_read = int32()
                 self.do_task.CreateDOChan(do_channels,"",DAQmx_Val_ChanPerLine)
                 
-                if static_DO:
+                if self.static_DO:
                     self.do_task.StartTask()
                     self.do_task.WriteDigitalLines(1,True,10.0,DAQmx_Val_GroupByChannel,do_write_data,do_read,None)
                 else:
@@ -416,7 +416,7 @@ class Ni_DAQmxWorker(Worker):
                 ao_read = int32()
                 self.ao_task.CreateAOVoltageChan(ao_channels,"",self.limits[0],self.limits[1],DAQmx_Val_Volts,None)
 
-                if static_AO:
+                if self.static_AO:
                     self.ao_task.StartTask()
                     self.ao_task.WriteAnalogF64(1, True, 10.0, DAQmx_Val_GroupByChannel, ao_data, ao_read, None)
                 else:
@@ -468,23 +468,25 @@ class Ni_DAQmxWorker(Worker):
 
         if self.buffered_using_analog:
             if not abort:
-                CurrentPos = uInt64()
-                TotalSamples = uInt64()
-                self.ao_task.GetWriteCurrWritePos(CurrentPos)
-                self.ao_task.GetWriteTotalSampPerChanGenerated(TotalSamples)
-                
-                self.logger.debug('NI_DAQmx Closing AO: at Sample %d of %d'%(CurrentPos.value, TotalSamples.value))
+                if not self.static_AO:
+                    CurrentPos = uInt64()
+                    TotalSamples = uInt64()
+                    self.ao_task.GetWriteCurrWritePos(CurrentPos)
+                    self.ao_task.GetWriteTotalSampPerChanGenerated(TotalSamples)
+                    
+                    self.logger.debug('NI_DAQmx Closing AO: at Sample %d of %d'%(CurrentPos.value, TotalSamples.value))
 
                 self.ao_task.StopTask()
             self.ao_task.ClearTask()
         if self.buffered_using_digital:
             if not abort:
-                CurrentPos = uInt64()
-                TotalSamples = uInt64()
-                self.do_task.GetWriteCurrWritePos(CurrentPos)
-                self.do_task.GetWriteTotalSampPerChanGenerated(TotalSamples)
-
-                self.logger.debug('NI_DAQmx Closing DO: at Sample %d of %d'%(CurrentPos.value, TotalSamples.value))
+                if not self.static_DO:
+                    CurrentPos = uInt64()
+                    TotalSamples = uInt64()
+                    self.do_task.GetWriteCurrWritePos(CurrentPos)
+                    self.do_task.GetWriteTotalSampPerChanGenerated(TotalSamples)
+    
+                    self.logger.debug('NI_DAQmx Closing DO: at Sample %d of %d'%(CurrentPos.value, TotalSamples.value))
         
                 self.do_task.StopTask()
             self.do_task.ClearTask()
