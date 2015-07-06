@@ -573,7 +573,13 @@ class Ni_DAQmxAcquisitionWorker(Worker):
                     try:
                         error = "Task did not return an error, but it should have"
                         acquisition_timeout = 5
-                        error = self.task.ReadAnalogF64(self.samples_per_channel,acquisition_timeout,DAQmx_Val_GroupByChannel,self.ai_data,self.samples_per_channel*len(chnl_list),byref(self.ai_read),None)
+                        error = self.task.ReadAnalogF64(self.samples_per_channel,
+                                                        acquisition_timeout,
+                                                        DAQmx_Val_GroupByChannel,
+                                                        self.ai_data,
+                                                        self.samples_per_channel*len(chnl_list),
+                                                        byref(self.ai_read),
+                                                        None)
                         #logger.debug('Reading complete')
                         if error is not None and error != 0:
                             if error < 0:
@@ -639,11 +645,29 @@ class Ni_DAQmxAcquisitionWorker(Worker):
                 
             if len(chnl_list) < 1:
                 return
+            
+            # From the NI documentation the following buffers are minimum suggestions
+            # Sample Rate         Buffer Size
+            # No rate specified	10 kS
+            # 0–100 S/s	      1 kS
+            # 101–10,000 S/s	      10 kS
+            # 10,001–1,000,000 S/s	100 kS
+            # >1,000,000 S/s	1 MS            
+            
+#            if rate < 1000:
+#                self.samples_per_channel = int(rate)
+#            else:
+#                self.samples_per_channel = 1000
                 
-            if rate < 1000:
-                self.samples_per_channel = int(rate)
-            else:
+            if rate < 1e2:
                 self.samples_per_channel = 1000
+            elif rate < 1e4:
+                self.samples_per_channel = 10000
+            elif rate < 1e6:
+                self.samples_per_channel = 100000
+            else:
+                self.samples_per_channel = 1000000
+                
             try:
                 self.task = Task()
             except Exception as e:
@@ -654,7 +678,7 @@ class Ni_DAQmxAcquisitionWorker(Worker):
             for chnl in chnl_list:
                 self.task.CreateAIVoltageChan(chnl,"",DAQmx_Val_RSE,-10.0,10.0,DAQmx_Val_Volts,None)
                 
-            self.task.CfgSampClkTiming("",rate,DAQmx_Val_Rising,DAQmx_Val_ContSamps,1000)
+            self.task.CfgSampClkTiming("", rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.samples_per_channel)
             
             # Currently no difference
             if self.buffered:
