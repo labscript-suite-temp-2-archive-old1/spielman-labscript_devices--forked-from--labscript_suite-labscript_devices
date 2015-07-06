@@ -580,7 +580,7 @@ class Ni_DAQmxAcquisitionWorker(Worker):
                                                         self.samples_per_channel*len(chnl_list),
                                                         byref(self.ai_read),
                                                         None)
-                        #logger.debug('Reading complete')
+                        # logger.debug('Reading complete')
                         if error is not None and error != 0:
                             if error < 0:
                                 raise Exception(error)
