@@ -704,6 +704,8 @@ class Ni_DAQmxAcquisitionWorker(Worker):
             self.logger.debug('stop_task got daqlock')
             if self.task_running:
                 self.task_running = False
+                # ignore errors that are thrown by stop task?  such as buffer full errors?
+                # Add a try here at stop task?
                 self.task.StopTask()
                 self.task.ClearTask()
             self.daqlock.notify()
