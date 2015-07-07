@@ -645,15 +645,7 @@ class Ni_DAQmxAcquisitionWorker(Worker):
                 
             if len(chnl_list) < 1:
                 return
-            
-            # From the NI documentation the following buffers are minimum suggestions
-            # Sample Rate         Buffer Size
-            # No rate specified	10 kS
-            # 0–100 S/s	      1 kS
-            # 101–10,000 S/s	      10 kS
-            # 10,001–1,000,000 S/s	100 kS
-            # >1,000,000 S/s	1 MS            
-            
+
             if rate < 1000:
                 self.samples_per_channel = int(rate)
             else:
@@ -681,7 +673,7 @@ class Ni_DAQmxAcquisitionWorker(Worker):
             self.task.CfgSampClkTiming("", rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.samples_per_channel)
             
             # Suggested in https://github.com/jlblancoc/mrpt/blob/master/libs/hwdrivers/src/CNationalInstrumentsDAQ.cpp            
-            self.task.CfgInputBuffer(buffer_per_channel)            
+            self.task.CfgInputBuffer(self.buffer_per_channel)            
             
             # Currently no difference
             if self.buffered:
