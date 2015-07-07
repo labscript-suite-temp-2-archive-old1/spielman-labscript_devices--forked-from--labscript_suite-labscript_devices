@@ -654,19 +654,19 @@ class Ni_DAQmxAcquisitionWorker(Worker):
             # 10,001–1,000,000 S/s	100 kS
             # >1,000,000 S/s	1 MS            
             
-#            if rate < 1000:
-#                self.samples_per_channel = int(rate)
-#            else:
-#                self.samples_per_channel = 1000
+            if rate < 1000:
+                self.samples_per_channel = int(rate)
+            else:
+                self.samples_per_channel = 1000
                 
             if rate < 1e2:
-                self.samples_per_channel = 1000
+                self.buffer_per_channel = 1000
             elif rate < 1e4:
-                self.samples_per_channel = 10000
+                self.buffer_per_channel = 10000
             elif rate < 1e6:
-                self.samples_per_channel = 100000
+                self.buffer_per_channel = 100000
             else:
-                self.samples_per_channel = 1000000
+                self.buffer_per_channel = 1000000
                 
             try:
                 self.task = Task()
@@ -679,6 +679,7 @@ class Ni_DAQmxAcquisitionWorker(Worker):
                 self.task.CreateAIVoltageChan(chnl,"",DAQmx_Val_RSE,-10.0,10.0,DAQmx_Val_Volts,None)
                 
             self.task.CfgSampClkTiming("", rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.samples_per_channel)
+            self.task.bufferSamplesPerChannel(buffer_per_channel)            
             
             # Currently no difference
             if self.buffered:
