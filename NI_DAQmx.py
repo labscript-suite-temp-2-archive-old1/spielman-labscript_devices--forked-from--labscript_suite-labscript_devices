@@ -679,7 +679,9 @@ class Ni_DAQmxAcquisitionWorker(Worker):
                 self.task.CreateAIVoltageChan(chnl,"",DAQmx_Val_RSE,-10.0,10.0,DAQmx_Val_Volts,None)
                 
             self.task.CfgSampClkTiming("", rate, DAQmx_Val_Rising, DAQmx_Val_ContSamps, self.samples_per_channel)
-            self.task.bufferSamplesPerChannel(buffer_per_channel)            
+            
+            # Suggested in https://github.com/jlblancoc/mrpt/blob/master/libs/hwdrivers/src/CNationalInstrumentsDAQ.cpp            
+            self.task.CfgInputBuffer(buffer_per_channel)            
             
             # Currently no difference
             if self.buffered:
