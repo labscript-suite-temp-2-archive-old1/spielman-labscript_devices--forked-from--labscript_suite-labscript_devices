@@ -41,10 +41,18 @@ class NI_PCI_6733(parent.NIBoard):
     
     def generate_code(self, hdf5_file):
         parent.NIBoard.generate_code(self, hdf5_file)
-        if len(self.child_devices) % 2:
+        
+        # count the number of analog outputs in use
+        analog_count = 0
+        for child in self.child_devices:
+            if isinstance(child,AnalogOut):
+                analog_count += 1
+        
+        # Check that there is a multiple of two outputs
+        if analog_count % 2:
             raise LabscriptError('%s %s must have an even numer of analog outputs '%(self.description, self.name) +
                              'in order to guarantee an even total number of samples, which is a limitation of the DAQmx library. ' +
-                             'Please add a dummy output device or remove an output you\'re not using, so that there are an even number of outputs. Sorry, this is annoying I know :).')
+                             'Please add a dummy analog output device or remove an output you\'re not using, so that there are an even number of analog outputs. Sorry, this is annoying I know :).')
       
              
 from blacs.tab_base_classes import Worker, define_state
