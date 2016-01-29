@@ -806,7 +806,7 @@ class NiPCIe6363WaitMonitorWorker(Worker):
                 # Work out how long the waits were, save em, post an event saying so 
                 dtypes = [('label','a256'),('time',float),('timeout',float),('duration',float),('timed_out',bool)]
                 data = numpy.empty(len(self.wait_table), dtype=dtypes)
-                if self.waits_in_use:
+                if self.is_wait_monitor_device and self.waits_in_use:
                     data['label'] = self.wait_table['label']
                     data['time'] = self.wait_table['time']
                     data['timeout'] = self.wait_table['timeout']
