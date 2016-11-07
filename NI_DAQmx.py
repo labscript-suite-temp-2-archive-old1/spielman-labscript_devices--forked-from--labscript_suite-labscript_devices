@@ -278,20 +278,28 @@ class Ni_DAQmxWorker(Worker):
             DAQmxResetDevice(self.MAX_name)
             
             # Create task
-            self.ao_task = Task()
-            self.ao_read = int32()
-            self.ao_data = numpy.zeros((self.num['num_AO'],), dtype=numpy.float64)
+            if self.num['num_AO'] > 0:
+                self.ao_task = Task()
+                self.ao_read = int32()
+                self.ao_data = numpy.zeros((self.num['num_AO'],), dtype=numpy.float64)
+            else:
+                self.ao_task = None
             
             # Create DO task:
-            self.do_task = Task()
-            self.do_read = int32()
-            self.do_data = numpy.zeros(self.num['num_DO'],dtype=numpy.uint8)
+            if self.num['num_DO'] > 0:
+                self.do_task = Task()
+                self.do_read = int32()
+                self.do_data = numpy.zeros(self.num['num_DO'],dtype=numpy.uint8)
+            else:
+                self.do_task = None
             
             self.setup_static_channels()            
             
-            # DAQmx Start Code        
-            self.ao_task.StartTask()
-            self.do_task.StartTask()  
+            # DAQmx Start Code
+            if self.ao_task is not None:
+                self.ao_task.StartTask()
+            if self.do_task is not None:
+                self.do_task.StartTask()  
         
     def setup_static_channels(self):
         #setup AO channels
@@ -307,20 +315,24 @@ class Ni_DAQmxWorker(Worker):
         # currently do not allow direct access to PFI ports.  In the future can refer to NU_USB6346 code for an example
 
                 
-    def shutdown(self):        
-        self.ao_task.StopTask()
-        self.ao_task.ClearTask()
-        self.do_task.StopTask()
-        self.do_task.ClearTask()
+    def shutdown(self):
+        if self.ao_task is not None:
+            self.ao_task.StopTask()
+            self.ao_task.ClearTask()
+        if self.do_task is not None:
+            self.do_task.StopTask()
+            self.do_task.ClearTask()
         
     def program_manual(self,front_panel_values):
-        for i in range(self.num['num_AO']):
-            self.ao_data[i] = front_panel_values['ao%d'%i]
-        self.ao_task.WriteAnalogF64(1,True,1,DAQmx_Val_GroupByChannel,self.ao_data,byref(self.ao_read),None)
+        if self.ao_task is not None:
+            for i in range(self.num['num_AO']):
+                self.ao_data[i] = front_panel_values['ao%d'%i]
+            self.ao_task.WriteAnalogF64(1,True,1,DAQmx_Val_GroupByChannel,self.ao_data,byref(self.ao_read),None)
         
-        for i in range(self.num['num_DO']):
-            self.do_data[i] = front_panel_values['port0/line%d'%i]
-        self.do_task.WriteDigitalLines(1,True,1,DAQmx_Val_GroupByChannel,self.do_data,byref(self.do_read),None)
+        if self.do_task is not None:
+            for i in range(self.num['num_DO']):
+                self.do_data[i] = front_panel_values['port0/line%d'%i]
+            self.do_task.WriteDigitalLines(1,True,1,DAQmx_Val_GroupByChannel,self.do_data,byref(self.do_read),None)
      
         # TODO: return coerced/quantised values
         return {}
@@ -491,12 +503,19 @@ class Ni_DAQmxWorker(Worker):
                 self.do_task.StopTask()
             self.do_task.ClearTask()
         
-        
-        self.ao_task = Task()
-        self.do_task = Task()
+        if self.num['num_AO'] > 0:
+            self.ao_task = Task()
+        else:
+            self.ao_task = None
+        if self.num['num_DO'] > 0:
+            self.do_task = Task()
+        else:
+            self.do_task = None
         self.setup_static_channels()
-        self.ao_task.StartTask()
-        self.do_task.StartTask()
+        if self.ao_task is not None:
+            self.ao_task.StartTask()
+        if self.do_task is not None:
+            self.do_task.StartTask()
         if abort:
             # Reprogram the initial states:
             self.program_manual(self.initial_values)
