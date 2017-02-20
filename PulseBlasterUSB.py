@@ -13,6 +13,7 @@
 
 from labscript_devices import labscript_device, BLACS_tab, BLACS_worker, runviewer_parser
 from labscript_devices.PulseBlaster_No_DDS import PulseBlaster_No_DDS, Pulseblaster_No_DDS_Tab, PulseblasterNoDDSWorker
+from labscript_devices.PulseBlaster import PulseBlasterParser
 
 @labscript_device
 class PulseBlasterUSB(PulseBlaster_No_DDS):
@@ -27,8 +28,13 @@ class PulseblasterUSBTab(Pulseblaster_No_DDS_Tab):
     num_DO = 24
     def __init__(self,*args,**kwargs):
         self.device_worker_class = PulseblasterUSBWorker 
-        pulseblaster_no_dds.__init__(self,*args,**kwargs)
+        Pulseblaster_No_DDS_Tab.__init__(self,*args,**kwargs)
     
 @BLACS_worker   
 class PulseblasterUSBWorker(PulseblasterNoDDSWorker):
     core_clock_freq = 100.0
+
+@runviewer_parser
+class PulseBlasterUSB_Parser(PulseBlasterParser):
+    num_dds = 0
+    num_flags = 24
