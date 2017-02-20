@@ -37,7 +37,7 @@ class NI_DAQmx(parent.NIBoard):
     description = 'NI-DAQmx'
     
     @set_passed_properties(property_names = {
-        "connection_table_properties":["clock_terminal", "num_AO", "range_AO", "static_AO", "num_DO", "static_DO", "num_AI", "clock_terminal_AI", "num_PFI"],
+        "connection_table_properties":["clock_terminal", "num_AO", "range_AO", "static_AO", "num_DO", "static_DO", "num_AI", "clock_terminal_AI", "num_PFI", "DAQmx_waits_counter_bug_workaround"],
         "device_properties":["sample_rate_AO", "sample_rate_DO", "mode_AI"]}
         )
     def __init__(self, name, parent_device,
@@ -53,6 +53,7 @@ class NI_DAQmx(parent.NIBoard):
                  clock_terminal_AI=None,
                  mode_AI='labscript',
                  num_PFI=0,
+                 DAQmx_waits_counter_bug_workaround=False,
                  **kwargs):
         """
         clock_termanal does not need to be specified for static outout
@@ -90,6 +91,15 @@ class NI_DAQmx(parent.NIBoard):
         # the AO and DO ports
         self.clock_limit = np.minimum(sample_rate_AO, sample_rate_DO)
         
+        # This is to instruct the wait monitor device to:
+        # a) in labscript compilation: Use an 0.1 second duration for the wait
+        # monitor trigger instead of a shorter one
+        # b) In the BLACS waits worker process: skip the initial rising edge.
+        # These are to work around what seems to be a bug in DAQmx. The initial
+        #rising edge is not supposed to be detected, and clearly pulses of less
+        # than 0.1 seconds ought to be detectable. However this workaround fixes
+        # things for the affected devices, currenly the NI USB 6229 on NI DAQmx 15.0.
+        self.DAQmx_waits_counter_bug_workaround = DAQmx_waits_counter_bug_workaround
         # Now call this to get the clock right
         self.parent_device.add_device(self)
 
@@ -245,7 +255,10 @@ class NI__DAQmxTab(DeviceTab):
         self.create_worker("main_worker",Ni_DAQmxWorker,{'MAX_name':self.MAX_name, 'limits': [base_min['AO'],base_max['AO']], 'num':num})
         self.primary_worker = "main_worker"
         
-        self.create_worker("wait_monitor_worker",Ni_DAQmxWaitMonitorWorker,{'MAX_name':self.MAX_name})
+        DAQmx_waits_counter_bug_workaround = connection_table_properties["DAQmx_waits_counter_bug_workaround"]
+        self.create_worker("wait_monitor_worker",Ni_DAQmxWaitMonitorWorker,
+                           {'MAX_name':self.MAX_name,
+                            'DAQmx_waits_counter_bug_workaround': DAQmx_waits_counter_bug_workaround})
         self.add_secondary_worker("wait_monitor_worker")
         
         if connection_table_properties["num_AI"] > 0:
@@ -877,12 +890,13 @@ class Ni_DAQmxWaitMonitorWorker(Worker):
             self.stop_task()    
     
     #def read_one_half_period(self, timeout, readarray = numpy.empty(1)):
-    def read_one_half_period(self, timeout): 
+    def read_one_half_period(self, timeout, save=True):
         readarray = numpy.empty(1)
         try:
             with self.daqlock:
                 self.acquisition_task.ReadCounterF64(1, timeout, readarray, len(readarray), ctypes.c_long(1), None)
-                self.half_periods.append(readarray[0])
+                if save:
+                    self.half_periods.append(readarray[0])
             return readarray[0]
         except Exception:
             if self.abort:
@@ -890,14 +904,14 @@ class Ni_DAQmxWaitMonitorWorker(Worker):
             # otherwise, it's a timeout:
             return None
     
-    def wait_for_edge(self, timeout=None):
+    def wait_for_edge(self, timeout=None, save=True):
         if timeout is None:
             while True:
-                half_period = self.read_one_half_period(1)
+                half_period = self.read_one_half_period(1, save)
                 if half_period is not None:
                     return half_period
         else:
-            return self.read_one_half_period(timeout)
+            return self.read_one_half_period(timeout, save)
                 
     def daqmx_read(self):
         logger = logging.getLogger('BLACS.%s_%s.read_thread'%(self.device_name, self.worker_name))
@@ -905,6 +919,8 @@ class Ni_DAQmxWaitMonitorWorker(Worker):
         with self.kill_lock:
             try:
                 # Wait for the end of the first pulse indicating the start of the experiment:
+                if self.DAQmx_waits_counter_bug_workaround:
+                    ignored = self.wait_for_edge(save=False)
                 current_time = pulse_width = self.wait_for_edge()
                 # alright, we're now a short way into the experiment.
                 for wait in self.wait_table:
