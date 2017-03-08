@@ -255,7 +255,8 @@ class NI__DAQmxTab(DeviceTab):
         self.create_worker("main_worker",Ni_DAQmxWorker,{'MAX_name':self.MAX_name, 'limits': [base_min['AO'],base_max['AO']], 'num':num})
         self.primary_worker = "main_worker"
         
-        DAQmx_waits_counter_bug_workaround = connection_table_properties["DAQmx_waits_counter_bug_workaround"]
+        # using workaround? Default to False for backward compat with old connection table h5 files:
+        DAQmx_waits_counter_bug_workaround = connection_table_properties.get("DAQmx_waits_counter_bug_workaround", False)
         self.create_worker("wait_monitor_worker",Ni_DAQmxWaitMonitorWorker,
                            {'MAX_name':self.MAX_name,
                             'DAQmx_waits_counter_bug_workaround': DAQmx_waits_counter_bug_workaround})
