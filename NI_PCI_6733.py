@@ -13,7 +13,7 @@
 
 from labscript import LabscriptError
 from labscript_devices import labscript_device, BLACS_tab, BLACS_worker, runviewer_parser
-from labscript import AnalogOut, StaticAnalogOut, DigitalOut, StaticDigitalOut, AnalogIn
+from labscript import AnalogOut, DigitalOut, AnalogIn
 import labscript_devices.NIBoard as parent
 
 import numpy as np
@@ -93,6 +93,7 @@ class NI_PCI_6733Tab(DeviceTab):
         
         # now create the digital output objects
         self.create_digital_outputs(do_prop)
+        # manually create the digital output widgets so they are grouped separately
         do_widgets = self.create_digital_widgets(do_prop)
         
         def do_sort(channel):
@@ -181,7 +182,8 @@ class NiPCI6733Worker(Worker):
         # Store the initial values in case we have to abort and restore them:
         # TODO: Coerce/quantise these correctly before returning them
         self.initial_values = initial_values
-            
+           
+        final_values = {}
         with h5py.File(h5file,'r') as hdf5_file:
             group = hdf5_file['devices/'][device_name]
             device_properties = labscript_utils.properties.get(hdf5_file, device_name, 'device_properties')
@@ -208,15 +210,12 @@ class NiPCI6733Worker(Worker):
             else:
                 self.buffered_using_digital = False
                         
-            final_values = {}
             # We must do digital first, so as to make sure the manual mode task is stopped, or reprogrammed, by the time we setup the AO task
             # this is because the clock_terminal PFI must be freed!
-
             with self.NIDAQ_API_lock:
     
                 if self.buffered_using_digital:
-                    # Expand each bitfield int into self.num_DO
-                    # (32) individual ones and zeros:
+                    # Expand each bitfield int into self.num_DO individual ones and zeros:
                     do_write_data = numpy.zeros((do_bitfield.shape[0],self.num_DO),dtype=numpy.uint8)
                     for i in range(self.num_DO):
                         do_write_data[:,i] = (do_bitfield & (1 << i)) >> i
@@ -254,11 +253,12 @@ class NiPCI6733Worker(Worker):
                     # Final values here are a dictionary of values, keyed by channel:
                     channel_list = [channel.split('/')[1] for channel in ao_channels.split(', ')]
                     final_values = {channel: value for channel, value in zip(channel_list, ao_data[-1,:])}
-                    return final_values
                 else:
                     # we should probabaly still stop the task (this makes it easier to setup the task later)
                     self.ao_task.StopTask()
                     self.ao_task.ClearTask()
+
+        return final_values
             
     def transition_to_manual(self,abort=False):
         # if aborting, don't call StopTask since this throws an
