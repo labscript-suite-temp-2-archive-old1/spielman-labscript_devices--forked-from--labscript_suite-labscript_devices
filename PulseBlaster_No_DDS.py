@@ -11,8 +11,8 @@
 #                                                                   #
 #####################################################################
 
-from labscript_devices import labscript_device, BLACS_tab, BLACS_worker
-from labscript_devices.PulseBlaster import PulseBlaster
+from labscript_devices import labscript_device, BLACS_tab, BLACS_worker, runviewer_parser
+from labscript_devices.PulseBlaster import PulseBlaster, PulseBlasterParser
 from labscript import PseudoclockDevice, config
 
 import numpy as np
