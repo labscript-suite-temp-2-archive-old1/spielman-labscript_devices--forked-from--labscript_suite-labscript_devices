@@ -273,12 +273,24 @@ class NI__DAQmxTab(DeviceTab):
 @BLACS_worker
 class Ni_DAQmxWorker(Worker):
     def init(self):
-        exec 'from PyDAQmx import Task, DAQmxResetDevice' in globals()
+        exec 'from PyDAQmx import Task, DAQmxGetSysNIDAQMajorVersion, DAQmxGetSysNIDAQMinorVersion, DAQmxGetSysNIDAQUpdateVersion, DAQmxResetDevice' in globals()
         exec 'from PyDAQmx.DAQmxConstants import *' in globals()
         exec 'from PyDAQmx.DAQmxTypes import *' in globals()
         global pylab; import pylab
         global numpy; import numpy
         global h5py; import labscript_utils.h5_lock, h5py
+
+        # check version of PyDAQmx
+        major = uInt32()
+        minor = uInt32()
+        patch = uInt32()
+        DAQmxGetSysNIDAQMajorVersion(major)
+        DAQmxGetSysNIDAQMinorVersion(minor)
+        DAQmxGetSysNIDAQUpdateVersion(patch)
+
+        if major.value == 14 and minor.value < 2:
+            version_exception_message = 'There is a known bug with buffered shots using NI DAQmx v14.0.0. This bug does not exist on v14.2.0. You are currently using v%d.%d.%d. Please ensure you upgrade to v14.2.0 or higher.'%(major.value, minor.value, patch.value)
+            raise Exception(version_exception_message)
 
         import zprocess.locking
         import socket
@@ -371,8 +383,8 @@ class Ni_DAQmxWorker(Worker):
             else:
                 self.buffered_using_digital = False
                 
+        final_values = {} 
         with self.NIDAQ_API_lock:
-            final_values = {} 
             # We must do digital first, so as to make sure the manual mode task is stopped, or reprogrammed, by the time we setup the AO task
             # this is because the clock_terminal PFI must be freed!
             if self.buffered_using_digital:
