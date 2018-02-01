@@ -109,6 +109,7 @@ class NI_DAQmx(parent.NIBoard):
         analogs = {}
         digitals = {}
         inputs = {}
+
         for device in self.child_devices:
             # TODO loop over allowed children rather than this case-by-case code
             if isinstance(device,AnalogOut) or isinstance(device,StaticAnalogOut):
@@ -119,7 +120,22 @@ class NI_DAQmx(parent.NIBoard):
                 inputs[device.connection] = device
             else:
                 raise Exception('Got unexpected device.')
-        
+
+        if len(analogs) % 2:
+            raise LabscriptError('%s %s must have an even numer of analog outputs '%(self.description, self.name) +
+                             'in order to guarantee an even total number of samples, which is a limitation of the DAQmx library. ' +
+                             'Please add a dummy output device or remove an output you\'re not using, so that there are an even number of outputs. Sorry, this is annoying I know :).')
+            
+        if len(digitals) % 2:
+            raise LabscriptError('%s %s must have an even numer of digital outputs '%(self.description, self.name) +
+                             'in order to guarantee an even total number of samples, which is a limitation of the DAQmx library. ' +
+                             'Please add a dummy output device or remove an output you\'re not using, so that there are an even number of outputs. Sorry, this is annoying I know :).')
+
+        if len(inputs) % 2:
+            raise LabscriptError('%s %s must have an even numer of analog inputs '%(self.description, self.name) +
+                             'in order to guarantee an even total number of samples, which is a limitation of the DAQmx library. ' +
+                             'Please add a dummy output device or remove an output you\'re not using, so that there are an even number of inputs. Sorry, this is annoying I know :).')
+                    
         clockline = self.parent_device
         pseudoclock = clockline.parent_device
         times = pseudoclock.times[clockline]
@@ -179,13 +195,6 @@ class NI_DAQmx(parent.NIBoard):
         if len(acquisition_table): # Table must be non empty
             grp.create_dataset('ACQUISITIONS',compression=config.compression,data=acquisition_table)
             self.set_property('analog_in_channels', ', '.join(input_attrs), location='device_properties')
-
-        # I think this miscounts AO/DO/AI devices allowing me to have an odd 
-        # number of a subset?
-        if len(self.child_devices) % 2:
-            raise LabscriptError('%s %s must have an even numer of analog outputs '%(self.description, self.name) +
-                             'in order to guarantee an even total number of samples, which is a limitation of the DAQmx library. ' +
-                             'Please add a dummy output device or remove an output you\'re not using, so that there are an even number of outputs. Sorry, this is annoying I know :).')
 
 
 import time
