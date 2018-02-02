@@ -38,11 +38,11 @@ class NovaTechDDS9M(IntermediateDevice):
     clock_limit = 9990 # This is a realistic estimate of the max clock rate (100us for TS/pin10 processing to load next value into buffer and 100ns pipeline delay on pin 14 edge to update output values)
 
     @set_passed_properties(
-        property_names = {'connection_table_properties': ['com_port', 'update_mode', 'baud_rate',
+        property_names = {'connection_table_properties': ['com_port', 'update_mode', 'baud_rate', 'phase_mode', 
                                                           'default_baud_rate', 'synchronous_first_line_repeat']}
         )
     def __init__(self, name, parent_device,
-                 com_port = "", baud_rate=115200, default_baud_rate=0,
+                 com_port = "", baud_rate=115200, default_baud_rate=0, phase_mode='default',
                  update_mode='synchronous', synchronous_first_line_repeat=False, **kwargs):
 
         IntermediateDevice.__init__(self, name, parent_device, **kwargs)
@@ -51,6 +51,9 @@ class NovaTechDDS9M(IntermediateDevice):
         if not update_mode in ['synchronous', 'asynchronous']:
             raise LabscriptError('update_mode must be \'synchronous\' or \'asynchronous\'')
 
+        if not phase_mode in ['default', 'aligned', 'continuous']:
+            raise LabscriptError('phase_mode must be \'default\', \'aligned\' or \'continuous\'')
+
         if not baud_rate in bauds:
             raise LabscriptError('baud_rate must be one of {0}'.format(bauds.keys()))
 
@@ -58,6 +61,7 @@ class NovaTechDDS9M(IntermediateDevice):
             raise LabscriptError('default_baud_rate must be one of {0} or 0 (to indicate no default)'.format(bauds.keys()))
 
         self.update_mode = update_mode
+        self.phase_mode = phase_mode
         self.synchronous_first_line_repeat = synchronous_first_line_repeat
 
     def add_device(self, device):
@@ -276,6 +280,17 @@ class NovatechDDS9mWorker(Worker):
         else:
             self.connection = serial.Serial(self.com_port, baudrate=self.baud_rate, timeout=0.1)
 
+        # Set phase mode method
+        if self.phase_mode == 'default':
+            self.phase_mode_command = 'm 0'
+        elif self.phase_mode == 'aligned':
+            self.phase_mode_command = 'm a'
+        elif self.phase_mode == 'continuous':
+            self.phase_mode_command = 'm n'
+        else:
+            self.phase_mode_command = 'm 0'
+            raise Exception('Error: invalid phase_mode "%s".'%self.phase_mode)
+
         # Flush any junk from the buffer
         self.connection.readlines()
 
@@ -291,9 +306,9 @@ class NovatechDDS9mWorker(Worker):
         if self.connection.readline() != "OK\r\n":
             raise Exception('Error: Failed to execute command: "I a"')
 
-        self.connection.write('m 0\r\n')
+        self.connection.write('%s\r\n'%self.phase_mode_command)
         if self.connection.readline() != "OK\r\n":
-            raise Exception('Error: Failed to execute command: "m 0"')
+            raise Exception('Error: Failed to execute command: "%s"'%self.phase_mode)
 
         #return self.get_current_values()
 
@@ -349,7 +364,6 @@ class NovatechDDS9mWorker(Worker):
 
     def transition_to_buffered(self,device_name,h5file,initial_values,fresh):
 
-
         # Pretty please reset your memory pointer to zero:
 
         # Transition to table mode:
@@ -357,10 +371,9 @@ class NovatechDDS9mWorker(Worker):
         self.connection.readline()
 
         # And back to manual mode
-        self.connection.write('m 0\r\n')
+        self.connection.write('%s\r\n'%self.phase_mode_command)
         if self.connection.readline() != "OK\r\n":
-            raise Exception('Error: Failed to execute command: "m 0"')
-
+            raise Exception('Error: Failed to execute command: "%s"'%self.phase_mode_command)
 
         # Store the initial values in case we have to abort and restore them:
         self.initial_values = initial_values
@@ -464,9 +477,9 @@ class NovatechDDS9mWorker(Worker):
         return self.transition_to_manual(True)
 
     def transition_to_manual(self,abort = False):
-        self.connection.write('m 0\r\n')
+        self.connection.write('%s\r\n'%self.phase_mode_command)
         if self.connection.readline() != "OK\r\n":
-            raise Exception('Error: Failed to execute command: "m 0"')
+            raise Exception('Error: Failed to execute command: "%s"'%self.phase_mode_command)
         self.connection.write('I a\r\n')
         if self.connection.readline() != "OK\r\n":
             raise Exception('Error: Failed to execute command: "I a"')
