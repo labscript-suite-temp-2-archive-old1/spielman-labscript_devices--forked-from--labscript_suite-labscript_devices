@@ -1030,7 +1030,7 @@ class Ni_DAQmxWaitMonitorWorker(Worker):
             # The counter acquisition task:
             self.acquisition_task = Task()
             acquisition_chan = '/'.join([self.MAX_name,acquisition_connection])
-            self.acquisition_task.CreateCISemiPeriodChan(acquisition_chan, '', 100e-9, 200, DAQmx_Val_Seconds, "")    
+            self.acquisition_task.CreateCISemiPeriodChan(acquisition_chan, '', 20e-6, 150, DAQmx_Val_Seconds, "") #100e-9, 200
             self.acquisition_task.CfgImplicitTiming(DAQmx_Val_ContSamps, 1000)
             self.acquisition_task.StartTask()
             # The timeout task:
