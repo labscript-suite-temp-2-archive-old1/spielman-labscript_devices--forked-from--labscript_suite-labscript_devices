@@ -253,12 +253,16 @@ class NovatechDDS9MTab(DeviceTab):
         self.baud_rate = connection_table_properties['baud_rate']
         self.default_baud_rate = connection_table_properties['default_baud_rate']
         self.update_mode = connection_table_properties['update_mode']
+        self.phase_mode = connection_table_properties['phase_mode']
 
         # Create and set the primary worker
         self.create_worker("main_worker",NovatechDDS9mWorker,{'com_port':self.com_port,
                                                               'baud_rate': self.baud_rate,
                                                               'default_baud_rate': self.default_baud_rate,
-                                                              'update_mode': self.update_mode})
+                                                              'update_mode': self.update_mode,
+                                                              'phase_mode': self.phase_mode}
+                    )
+        
         self.primary_worker = "main_worker"
 
         # Set the capabilities of this device
