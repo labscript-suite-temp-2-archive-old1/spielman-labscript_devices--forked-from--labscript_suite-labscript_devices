@@ -249,11 +249,11 @@ class NovatechDDS9MTab(DeviceTab):
         connection_object = self.settings['connection_table'].find_by_name(self.device_name)
         connection_table_properties = connection_object.properties
 
-        self.com_port = connection_table_properties['com_port']
-        self.baud_rate = connection_table_properties['baud_rate']
-        self.default_baud_rate = connection_table_properties['default_baud_rate']
-        self.update_mode = connection_table_properties['update_mode']
-        self.phase_mode = connection_table_properties['phase_mode']
+        self.com_port = connection_table_properties.get('com_port')
+        self.baud_rate = connection_table_properties.get('baud_rate', 115200)
+        self.default_baud_rate = connection_table_properties.get('default_baud_rate', 0)
+        self.update_mode = connection_table_properties.get('update_mode', 'synchronous')
+        self.phase_mode = connection_table_properties.get('phase_mode', 'default')
 
         # Create and set the primary worker
         self.create_worker("main_worker",NovatechDDS9mWorker,{'com_port':self.com_port,
