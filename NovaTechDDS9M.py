@@ -280,9 +280,12 @@ class NovatechDDS9mWorker(Worker):
         if self.default_baud_rate != 0:
             self.connection = serial.Serial(self.com_port, baudrate=self.default_baud_rate, timeout=0.1)
             self.connection.write('{}\n'.format(bauds[self.baud_rate]))
-            self.connection.baudrate = self.baud_rate
-        else:
-            self.connection = serial.Serial(self.com_port, baudrate=self.baud_rate, timeout=0.1)
+
+            # Flush any junk from the buffer
+            self.connection.readlines()
+            self.connection.close()
+        
+        self.connection = serial.Serial(self.com_port, baudrate=self.baud_rate, timeout=0.1)
 
         # Set phase mode method
         if self.phase_mode == 'default':
@@ -304,7 +307,7 @@ class NovatechDDS9mWorker(Worker):
             # if echo was enabled, then the command to disable it echos back at us!
             response = self.connection.readline()
         if response != "OK\r\n":
-            raise Exception('Error: Failed to execute command: "e d". Cannot connect to the device.')
+            raise Exception('Error: Failed to execute command: "e d", recieved "%s".'%response)
 
         self.connection.write('I a\r\n')
         if self.connection.readline() != "OK\r\n":
