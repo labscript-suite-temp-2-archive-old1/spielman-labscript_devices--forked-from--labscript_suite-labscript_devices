@@ -37,7 +37,7 @@ class NI_DAQmx(parent.NIBoard):
     description = 'NI-DAQmx'
     
     @set_passed_properties(property_names = {
-        "connection_table_properties":["clock_terminal", "num_AO", "range_AO", "static_AO", "num_DO", "static_DO", "num_AI", "clock_terminal_AI", "num_PFI", "DAQmx_waits_counter_bug_workaround"],
+        "connection_table_properties":["clock_terminal", "num_AO", "range_AO", "static_AO", "num_DO", "static_DO", "num_AI", "clock_terminal_AI", "num_PFI", "DAQmx_waits_counter_bug_workaround", "clock_mirror_terminal"],
         "device_properties":["sample_rate_AO", "sample_rate_DO", "mode_AI"]}
         )
     def __init__(self, name, parent_device,
@@ -54,6 +54,7 @@ class NI_DAQmx(parent.NIBoard):
                  mode_AI='labscript',
                  num_PFI=0,
                  DAQmx_waits_counter_bug_workaround=False,
+                 clock_mirror_terminal=None,
                  **kwargs):
         """
         clock_termanal does not need to be specified for static outout
@@ -282,7 +283,7 @@ class NI__DAQmxTab(DeviceTab):
 @BLACS_worker
 class Ni_DAQmxWorker(Worker):
     def init(self):
-        exec 'from PyDAQmx import Task, DAQmxGetSysNIDAQMajorVersion, DAQmxGetSysNIDAQMinorVersion, DAQmxGetSysNIDAQUpdateVersion, DAQmxResetDevice' in globals()
+        exec 'from PyDAQmx import Task, DAQmxGetSysNIDAQMajorVersion, DAQmxGetSysNIDAQMinorVersion, DAQmxGetSysNIDAQUpdateVersion, DAQmxResetDevice, DAQmxConnectTerms, DAQmxDisconnectTerms' in globals()
         exec 'from PyDAQmx.DAQmxConstants import *' in globals()
         exec 'from PyDAQmx.DAQmxTypes import *' in globals()
         global pylab; import pylab
@@ -368,7 +369,9 @@ class Ni_DAQmxWorker(Worker):
             group = hdf5_file['devices/'][device_name]
             device_properties = labscript_utils.properties.get(hdf5_file, device_name, 'device_properties')
             connection_table_properties = labscript_utils.properties.get(hdf5_file, device_name, 'connection_table_properties')
-            clock_terminal = connection_table_properties['clock_terminal']
+            self.clock_terminal = connection_table_properties['clock_terminal']
+            # The terminal on which to mirror the clock output: 
+            self.clock_mirror_terminal = connection_table_properties.get('clock_mirror_terminal', None)
             self.static_AO = connection_table_properties['static_AO']
             self.static_DO = connection_table_properties['static_DO']
             h5_data = group.get('ANALOG_OUTS')
@@ -394,6 +397,13 @@ class Ni_DAQmxWorker(Worker):
                 
         final_values = {} 
         with self.NIDAQ_API_lock:
+        
+            # Mirror the clock terminal on another terminal to allow daisy chaining of the clock line
+            # to other devices, if applicable.
+            if self.clock_mirror_terminal is not None:
+                DAQmxConnectTerms(self.clock_terminal, self.clock_mirror_terminal, DAQmx_Val_DoNotInvertPolarity)
+                
+                        
             # We must do digital first, so as to make sure the manual mode task is stopped, or reprogrammed, by the time we setup the AO task
             # this is because the clock_terminal PFI must be freed!
             if self.buffered_using_digital:
@@ -420,7 +430,7 @@ class Ni_DAQmxWorker(Worker):
 
                     do_write_data = do_write_data[:-1,:]
                     self.do_task.CfgSampClkTiming(
-                                    clock_terminal,
+                                    self.clock_terminal,
                                     device_properties['sample_rate_DO'],
                                     DAQmx_Val_Rising,
                                     DAQmx_Val_FiniteSamps,
@@ -434,6 +444,7 @@ class Ni_DAQmxWorker(Worker):
                                     do_write_data,
                                     do_read,
                                     None)
+                        
                     self.do_task.StartTask()
                 
                 for i in range(self.num['num_DO']):
@@ -462,7 +473,7 @@ class Ni_DAQmxWorker(Worker):
                     ao_data = ao_data[:-1,:]
     
                     self.ao_task.CfgSampClkTiming(
-                                    clock_terminal,
+                                    self.clock_terminal,
                                     device_properties['sample_rate_AO'],
                                     DAQmx_Val_Rising,
                                     DAQmx_Val_FiniteSamps, 
@@ -476,6 +487,7 @@ class Ni_DAQmxWorker(Worker):
                                     ao_data,
                                     ao_read,
                                     None)
+                        
                     self.ao_task.StartTask()   
                 
                 # Final values here are a dictionary of values, keyed by channel:
@@ -526,7 +538,10 @@ class Ni_DAQmxWorker(Worker):
                 self.do_task.StopTask()
             self.do_task.ClearTask()
         
-        
+        # Remove the mirroring of the clock terminal, if applicable:
+        if self.clock_mirror_terminal is not None:
+            DAQmxDisconnectTerms(self.clock_terminal, self.clock_mirror_terminal)
+                
         self.ao_task = Task()
         self.do_task = Task()
         self.setup_static_channels()
