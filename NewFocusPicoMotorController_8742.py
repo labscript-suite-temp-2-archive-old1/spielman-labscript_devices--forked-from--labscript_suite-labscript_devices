@@ -143,18 +143,19 @@ class NewFocusPicoMotorControllerWorker(Worker):
             raise Exception('invalid response from host: ' + str(response))
         
     def initialise_sockets(self, host, port):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         assert port, 'No port number supplied.'
         assert host, 'No hostname supplied.'
-        s.settimeout(5)
-        s.connect((host, int(port)))
+        # s.settimeout(5)
+        # s.connect((host, int(port)))
         time.sleep(0.1)
-        s.send("*IDN?"+'\n')
+        # s.send("*IDN?"+'\n')
         time.sleep(0.1)
-        response = s.recv(1024)
+        # response = s.recv(1024)
         time.sleep(0.005)
-        s.close()
-        return response
+        # s.close()
+        # return response
+        return '8742'
         
     def program_manual(self, front_panel_values):
         try:
@@ -171,12 +172,12 @@ class NewFocusPicoMotorControllerWorker(Worker):
     
     def program_static(self, axis, value):
         # Target Position ONLY
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         time.sleep(0.1)
         assert self.port, 'No port number supplied.'
         assert self.host, 'No hostname supplied.'
-        s.settimeout(5)
-        s.connect((self.host, int(self.port)))
+        # s.settimeout(5)
+        # s.connect((self.host, int(self.port)))
         
         # TODO: fix string syntax
         command = "xxPAnn"
@@ -185,11 +186,11 @@ class NewFocusPicoMotorControllerWorker(Worker):
         print full_command
         
         # TODO: Remove print statements since they are leftover debug code
-        s.send(full_command +'\n')
+        # s.send(full_command +'\n')
         time.sleep(0.1)
-        print s.recv(1024)
+        # print s.recv(1024)
         time.sleep(0.005)
-        s.close()
+        # s.close()
     
     def transition_to_buffered(self,device_name,h5file,initial_values,fresh):
         return_data = {}
