@@ -26,15 +26,16 @@ class NewFocusPicoMotorController_8742(Device):
     allowed_children = [NewFocus8742Motor]
     generation = 0
     
-    @set_passed_properties(
-    )
-                                             
+    @set_passed_properties(property_names = {
+        "connection_table_properties":["host", "port"]}
+        )
     def __init__(self, name, 
-                 host = "", port=23, **kwargs):
+                 host="",
+                 port=23, 
+                 **kwargs):
             
-        Device.__init__(self, name, None, None, None)
+        Device.__init__(self, name, None, None, None, **kwargs)
         self.BLACS_connection = '%s' %(host)
-                
         
     def generate_code(self, hdf5_file):
         data_dict = {}
@@ -69,20 +70,22 @@ from blacs.device_base_class import DeviceTab
 @BLACS_tab
 class NewFocusPicoMotorControllerTab(DeviceTab):
     def initialise_GUI(self):
+        
         # Capabilities
         self.base_units = 'steps'
         self.base_min = -2147483648
         self.base_step = 10
         self.base_decimals = 0
         
-        self.device = self.settings['connection_table'].find_by_name(self.device_name)
-        self.num_motors = len(self.device.child_list)
+        device = self.settings['connection_table'].find_by_name(self.device_name)
         
         # Create the AO output objects
+        self.connections = [device.child_list[child_name].parent_port for child_name in device.child_list]
+        
         ao_prop = {}
-        for child_name in self.device.child_list:
-            motor_type = self.device.child_list[child_name].device_class
-            connection = self.device.child_list[child_name].parent_port
+        for child_name in device.child_list:
+            motor_type = device.child_list[child_name].device_class
+            connection = device.child_list[child_name].parent_port
             if motor_type == "NewFocus8742Motor":
                 base_max = 2147483647
             else:
@@ -96,14 +99,15 @@ class NewFocusPicoMotorControllerTab(DeviceTab):
                                   }
                                 
         # Create the output objects    
-        self.create_analog_outputs(ao_prop)        
+        self.create_analog_outputs(ao_prop)
+        
         # Create widgets for output objects
         dds_widgets,ao_widgets,do_widgets = self.auto_create_widgets()
         # and auto place the widgets in the UI
-        self.auto_place_widgets(("Target Position",ao_widgets))
+        self.auto_place_widgets(("Target Position", ao_widgets))
         
         # Store the address
-        self.host = str(self.settings['connection_table'].find_by_name(self.device_name).BLACS_connection)
+        self.host = str(device.properties['host'])
         
         # Set the capabilities of this device
         self.supports_remote_value_check(False)
@@ -111,7 +115,7 @@ class NewFocusPicoMotorControllerTab(DeviceTab):
     
     def initialise_workers(self):
         # Create and set the primary worker
-        self.create_worker("main_worker",NewFocusPicoMotorControllerWorker,{'host':self.host})
+        self.create_worker("main_worker", NewFocusPicoMotorControllerWorker, {'host':self.host, 'connections': self.connections})
         self.primary_worker = "main_worker"
 
 @BLACS_worker    
@@ -121,6 +125,9 @@ class NewFocusPicoMotorControllerWorker(Worker):
         global zprocess; import zprocess
         global h5py; import labscript_utils.h5_lock, h5py
         global time; import time
+        
+        # The current position of the motor is unknown.  Use the first set
+        self.current_values = {connection:None for connection in self.connections}     
         
         self.port = 23
         
@@ -153,6 +160,7 @@ class NewFocusPicoMotorControllerWorker(Worker):
         try:
             self.check_connectivity(self.host)
             # For each motor
+            # TODO: are we really assuming that there are four axes?
             for axis in range(1,5):
                 self.program_static(axis, int(front_panel_values["%s" %axis]))
                 time.sleep(0.01)
@@ -169,10 +177,14 @@ class NewFocusPicoMotorControllerWorker(Worker):
         assert self.host, 'No hostname supplied.'
         s.settimeout(5)
         s.connect((self.host, int(self.port)))
+        
+        # TODO: fix string syntax
         command = "xxPAnn"
         axis_command = command.replace("xx", str(axis))
         full_command = axis_command.replace("nn", str(value))
         print full_command
+        
+        # TODO: Remove print statements since they are leftover debug code
         s.send(full_command +'\n')
         time.sleep(0.1)
         print s.recv(1024)
