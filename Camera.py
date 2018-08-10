@@ -136,9 +136,8 @@ class CameraTab(DeviceTab):
         self.ui = UiLoader().load(ui_filepath)
         layout.addWidget(self.ui)
         
-        device = self.settings['connection_table'].find_by_name(self.device_name)
-
-        port = int(device.properties['port'])
+        port = int(self.settings['connection_table'].find_by_name(self.settings["device_name"]).BLACS_connection)
+        
         self.ui.port_label.setText(str(port)) 
         
         self.ui.is_responding.setVisible(False)
