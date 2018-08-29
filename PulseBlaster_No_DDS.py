@@ -439,5 +439,8 @@ class PulseblasterNoDDSWorker(Worker):
         #TODO: implement this
         pass
         
-
+@runviewer_parser
+class PulseBlaster_No_DDS_Parser(PulseBlasterParser):
+    num_dds = 0
+    num_flags = 24
 
